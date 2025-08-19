@@ -1,5 +1,3 @@
-// evaluate.c
-
 #include "stdio.h"
 #include "defs.h"
 #include "config.h"
@@ -425,7 +423,7 @@ static void listToParams(int* paramsList, S_EVAL_PARAMS *params) {
 }
 
 static void initParams(S_EVAL_PARAMS *params) {
-	int matVals[5] = {100, 325, 325, 550, 1000,};
+	int matVals[5] = { 100, 325, 325, 550, 1000 };
 	memcpy(params->TPieceValMG, matVals, sizeof(matVals));
     params->TBishopPairMG = TBishopPairMG;
 	memcpy(params->TPawnPassedMG, TPawnPassedMG, sizeof(TPawnPassedMG));

@@ -1,5 +1,3 @@
-// search.c
-
 #include "stdio.h"
 #include "defs.h"
 #include "config.h"
@@ -25,6 +23,14 @@ static const int RevFutilityMargin = 200;
 static const int LateMoveDepth = 3;
 static const int FullSearchMoves = 2;
 int LMRTable[64][64];
+
+// Aspiration Window Values
+static const int AspirationDepth = 4;
+static const int AspirationDelta = 25;
+
+// Probcut Values
+static const int ProbcutDepth = 4;
+static const int ProbcutMargin = 100;
 
 void InitSearch() {
 	// creating the LMR table entries (idea from Ethereal)
@@ -248,6 +254,34 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		return positionEval - (RevFutilityMargin * depth);
 	}
 
+	// Probcut: Try a reduced depth search with a raised beta to quickly detect strong moves
+	if (depth >= ProbcutDepth && !InCheck && abs(beta) < ISMATE) {
+		int probBeta = beta + ProbcutMargin;
+		S_MOVELIST list[1];
+		GenerateAllCaps(pos, list);
+
+		for (int MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+			PickNextMove(MoveNum, list);
+
+			if (!MakeMove(pos, list->moves[MoveNum].move)) {
+				continue;
+			}
+
+			// Try a reduced depth search with raised beta
+			int probScore = -AlphaBeta(-probBeta, -probBeta + 1, depth - 4, pos, info, 0, 0, table);
+			TakeMove(pos);
+
+			if (info->stopped == 1) {
+				return beta;
+			}
+
+			// If this move beats the raised beta, it will likely beat the real beta
+			if (probScore >= probBeta) {
+				return probScore;
+			}
+		}
+	}
+
 	// Null Move Pruning
 	if(depth >= minDepth && DoNull && !InCheck && pos->ply && (pos->bigPce[pos->side] > 0) && positionEval >= beta) {
 		MakeNullMove(pos);
@@ -408,8 +442,49 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
     ClearForSearch(pos, info, table);
 
     for(currentDepth = 1; currentDepth <= info->depth; ++currentDepth) {
-        bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, 1, 1, table);
-
+        // Use Aspiration Windows for deeper searches
+        if (currentDepth >= AspirationDepth) {
+            int alpha = bestScore - AspirationDelta;
+            int beta = bestScore + AspirationDelta;
+            int failCount = 0;
+            
+            // Start with a narrow window around previous best score
+            while (1) {
+                bestScore = AlphaBeta(alpha, beta, currentDepth, pos, info, 1, 1, table);
+                
+                // If we get a score within our window, we're done
+                if (bestScore > alpha && bestScore < beta) {
+                    break;
+                }
+                
+                // If search was stopped, exit
+                if (info->stopped == 1) {
+                    break;
+                }
+                
+                // If score fails low, adjust alpha and retry
+                if (bestScore <= alpha) {
+                    beta = (alpha + beta) / 2;
+                    alpha = alpha - (AspirationDelta * (1 << failCount));
+                    failCount++;
+                }
+                // If score fails high, adjust beta and retry
+                else if (bestScore >= beta) {
+                    beta = beta + (AspirationDelta * (1 << failCount));
+                    failCount++;
+                }
+                
+                // If we've failed too many times, do a full window search
+                if (failCount >= 4) {
+                    bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, 1, 1, table);
+                    break;
+                }
+            }
+        } else {
+            // For shallow depths, use full window
+            bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, 1, 1, table);
+        }
+        
         if(info->stopped == 1) {
             break;
         }

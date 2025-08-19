@@ -1,5 +1,3 @@
-// uci_options.c
-
 #include "stdio.h"
 #include "string.h"
 #include "uci_options.h"

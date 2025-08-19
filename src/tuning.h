@@ -1,4 +1,3 @@
-// parameters modifiable by tuning method
 #ifndef EVAL_T_H
 #define EVAL_T_H
 

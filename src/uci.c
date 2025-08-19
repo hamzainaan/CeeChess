@@ -1,5 +1,3 @@
-// uci.c
-
 #include "stdio.h"
 #include "defs.h"
 #include "string.h"

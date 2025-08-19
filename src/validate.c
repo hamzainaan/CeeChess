@@ -1,5 +1,3 @@
-// validate.c
-
 #include "defs.h"
 #include "config.h"
 #include "stdio.h"

@@ -1,5 +1,3 @@
-// evaluate.c
-
 #include "stdio.h"
 #include "defs.h"
 #include "eval.h"
