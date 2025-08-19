@@ -402,6 +402,7 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
     int bestMove = NOMOVE;
     int bestScore = -INFINITE;
     int currentDepth = 0, pvMoves = 0, pvNum = 0;
+	unsigned long long nps = 0;
 
     ClearForSearch(pos, info, table);
 
@@ -415,11 +416,20 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         pvMoves = GetPvLine(currentDepth, pos, table);
         bestMove = pos->PvArray[0];
 
+        int time = GetTimeMs() - info->starttime;
+        
+        // calculate nps if time is greater than zero
+        if (time > 0) {
+            // calculate nodes per second: (nodes * 1000) / time in milliseconds
+            // using unsigned long long to prevent overflow
+            nps = ((unsigned long long)info->nodes * 1000ULL) / (unsigned long long)time;
+        }
+        
         if(abs(bestScore) > ISMATE) {
             bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-            printf("info score mate %d depth %d nodes %ld time %d ", bestScore, currentDepth, info->nodes, GetTimeMs() - info->starttime);
+            printf("info score mate %d depth %d nodes %ld time %d nps %llu ", bestScore, currentDepth, info->nodes, time, nps);
         } else {
-            printf("info score cp %d depth %d nodes %ld time %d ", bestScore, currentDepth, info->nodes, GetTimeMs() - info->starttime);
+            printf("info score cp %d depth %d nodes %ld time %d nps %llu ", bestScore, currentDepth, info->nodes, time, nps);
         }
 
         printf("pv");
