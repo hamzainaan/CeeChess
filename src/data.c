@@ -9,8 +9,8 @@ char FileChar[] 			= "abcdefgh";
 int PieceBig[13] 			= { 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0 };
 int PieceMaj[13] 			= { 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1 };
 int PieceMin[13] 			= { 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0 };
-int PieceValMG[13]			= { 0, 91, 377, 384, 515, 1124, 50000, 91, 377, 384, 515, 1124, 50000  };
-int PieceValEG[13]			= { 0, 98, 327, 354, 614, 1127, 50000, 98, 327, 354, 614, 1127, 50000  };
+int PieceValMG[13]			= { 0, 91, 377, 384, 515, 1124, 0, 91, 377, 384, 515, 1124, 0  };
+int PieceValEG[13]			= { 0, 98, 327, 354, 614, 1127, 0, 98, 327, 354, 614, 1127, 0  };
 int PieceCol[13] 			= { BOTH, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK };
 
 int PiecePawn[13] 			= { 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 };
