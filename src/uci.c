@@ -6,11 +6,9 @@
 
 #define INPUTBUFFER 400 * 6
 
-// go depth 6 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
 void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 
-	int depth = -1, movestogo = 30,movetime = -1;
-	int time = -1, inc = 0;
+	int depth = -1, movestogo = 30, movetime = -1, time = -1, inc = 0;
     char *ptr = NULL;
 	info->timeset = FALSE;
 
@@ -65,14 +63,9 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 		info->depth = MAXDEPTH;
 	}
 
-	printf("time:%d start:%d stop:%d depth:%d timeset:%d\n",
-		time,info->starttime,info->stoptime,info->depth,info->timeset);
 	SearchPosition(pos, info, table);
 }
 
-// position fen fenstr
-// position startpos
-// ... moves e2e4 e7e5 b7b8q
 void ParsePosition(char* lineIn, S_BOARD *pos) {
 
 	lineIn += 9;
@@ -104,21 +97,18 @@ void ParsePosition(char* lineIn, S_BOARD *pos) {
               ptrChar++;
         }
     }
-	// PrintBoard(pos);
 }
 
 void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
-
-	info->GAME_MODE = UCIMODE;
 
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
 	char line[INPUTBUFFER];
-  printf("id name %s\n",NAME);
-  printf("id author Bctboi23\n");
+  	printf("id name %s\n",NAME);
+  	printf("id author Bctboi23\n");
 	printf("option name Hash type spin default 256 min 4 max %d\n",MAX_HASH);
-  printf("uciok\n\n");
+  	printf("uciok\n\n");
 
 	int MB = 256;
 

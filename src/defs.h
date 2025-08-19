@@ -151,9 +151,6 @@ typedef struct {
 	float fhf;
 	int nullCut;
 
-	int GAME_MODE;
-	int POST_THINKING;
-
 } S_SEARCHINFO;
 
 /* GAME MOVE */
