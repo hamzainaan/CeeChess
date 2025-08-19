@@ -2,6 +2,7 @@
 
 #include "stdio.h"
 #include "defs.h"
+#include "config.h"
 
 S_HASHTABLE HashTable[1];
 
@@ -12,7 +13,7 @@ int GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table) {
 	int move = ProbePvMove(pos, table);
 	int count = 0;
 	
-	while(move != NOMOVE && count < depth) {
+	while(move != 0 && count < depth) {
 	
 		ASSERT(count < MAXDEPTH);
 	
@@ -39,7 +40,7 @@ void ClearHashTable(S_HASHTABLE *table) {
   
   for (tableEntry = table->pTable; tableEntry < table->pTable + table->numEntries; tableEntry++) {
     tableEntry->posKey = 0ULL;
-    tableEntry->move = NOMOVE;
+    tableEntry->move = 0;
     tableEntry->depth = 0;
     tableEntry->score = 0;
     tableEntry->flags = 0;
@@ -61,11 +62,14 @@ void InitHashTable(S_HASHTABLE *table, const int MB) {
 		
     table->pTable = (S_HASHENTRY *) malloc(table->numEntries * sizeof(S_HASHENTRY));
 	if(table->pTable == NULL) {
-		printf("Hash Allocation Failed, trying %dMB...\n",MB/2);
-		InitHashTable(table,MB/2);
+		if(MB/2 >= MIN_HASH_SIZE) {
+			InitHashTable(table, MB/2);
+		} else {
+			printf("Cannot allocate hash table with minimum size. Exiting.\n");
+			exit(1);
+		}
 	} else {
 		ClearHashTable(table);
-		printf("HashTable init complete with %d entries\n",table->numEntries);
 	}
 	
 }
@@ -88,7 +92,7 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
 			table->hit++;
 			
 			ASSERT(table->pTable[index].depth>=1&&table->pTable[index].depth<MAXDEPTH);
-            ASSERT(table->pTable[index].flags>=HFALPHA&&table->pTable[index].flags<=HFEXACT);
+            ASSERT(table->pTable[index].flags>=1&&table->pTable[index].flags<=3);
 			
 			*score = table->pTable[index].score;
 			if(*score > ISMATE) *score -= pos->ply;
@@ -98,26 +102,26 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
 				
                 ASSERT(*score>=-INFINITE&&*score<=INFINITE);
 
-                case HFALPHA: if(*score<=alpha) {
+                case 1: if(*score<=alpha) {
                     *score=alpha;
-                    return TRUE;
+                    return 1;
                     }
                     break;
-                case HFBETA: if(*score>=beta) {
+                case 2: if(*score>=beta) {
                     *score=beta;
-                    return TRUE;
+                    return 1;
                     }
                     break;
-                case HFEXACT:
-                    return TRUE;
+                case 3:
+                    return 1;
                     break;
-                default: ASSERT(FALSE); break;
+                default: ASSERT(0); break;
             }
 		}
 		// otherwise move order is usable
 	}
 	
-	return FALSE;
+	return 0;
 }
 
 void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score, const int flags, const int depth) {
@@ -126,7 +130,7 @@ void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score,
 	
 	ASSERT(index >= 0 && index <= table->numEntries - 1);
 	ASSERT(depth>=1&&depth<MAXDEPTH);
-    ASSERT(flags>=HFALPHA&&flags<=HFEXACT);
+    ASSERT(flags>=1&&flags<=3);
     ASSERT(score>=-INFINITE&&score<=INFINITE);
     ASSERT(pos->ply>=0&&pos->ply<MAXDEPTH);
 
@@ -159,21 +163,5 @@ int ProbePvMove(const S_BOARD *pos, S_HASHTABLE *table) {
 		return table->pTable[index].move;
 	}
 	
-	return NOMOVE;
+	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

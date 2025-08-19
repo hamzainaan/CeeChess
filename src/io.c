@@ -48,10 +48,10 @@ int ParseMove(char *ptrChar, S_BOARD *pos) {
 
 	ASSERT(CheckBoard(pos));
 
-	if(ptrChar[1] > '8' || ptrChar[1] < '1') return NOMOVE;
-    if(ptrChar[3] > '8' || ptrChar[3] < '1') return NOMOVE;
-    if(ptrChar[0] > 'h' || ptrChar[0] < 'a') return NOMOVE;
-    if(ptrChar[2] > 'h' || ptrChar[2] < 'a') return NOMOVE;
+	if(ptrChar[1] > '8' || ptrChar[1] < '1') return 0;
+    if(ptrChar[3] > '8' || ptrChar[3] < '1') return 0;
+    if(ptrChar[0] > 'h' || ptrChar[0] < 'a') return 0;
+    if(ptrChar[2] > 'h' || ptrChar[2] < 'a') return 0;
 
     int from = FR2SQ(ptrChar[0] - 'a', ptrChar[1] - '1');
     int to = FR2SQ(ptrChar[2] - 'a', ptrChar[3] - '1');
@@ -84,7 +84,7 @@ int ParseMove(char *ptrChar, S_BOARD *pos) {
 		}
     }
 
-    return NOMOVE;
+    return 0;
 }
 
 void PrintMoveList(const S_MOVELIST *list) {
@@ -102,17 +102,3 @@ void PrintMoveList(const S_MOVELIST *list) {
 	}
 	printf("MoveList Total %d Moves:\n\n",list->count);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -4,6 +4,8 @@
 #include "defs.h"
 #include "stdlib.h"
 #include "string.h"
+#include "uci_options.h"
+#include "config.h"
 
 
 #define WAC1 "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1"
@@ -15,14 +17,14 @@ int main() {
 
 	S_BOARD pos[1];
     S_SEARCHINFO info[1];
-    info->quit = FALSE;
+    info->quit = 0;
 	HashTable->pTable = NULL;
-    InitHashTable(HashTable, 256);
+    InitHashTable(HashTable, DEFAULT_HASH_SIZE);
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
 	char line[256];
-	while (TRUE) {
+	while (1) {
 		memset(&line[0], 0, sizeof(line));
 
 		fflush(stdout);
@@ -32,7 +34,7 @@ int main() {
 			continue;
 		if (!strncmp(line, "uci",3)) {
 			Uci_Loop(pos, info, HashTable);
-			if(info->quit == TRUE) break;
+			if(info->quit == 1) break;
 			continue;
 		} else if(!strncmp(line, "quit",4))	{
 			break;

@@ -86,7 +86,7 @@ void ReadInput(S_SEARCHINFO *info) {
   char *endc;
   
   // Mark search as stopped
-  info->stopped = TRUE;
+  info->stopped = 1;
   
   // Read input, retry if read fails
   do {
@@ -105,7 +105,7 @@ void ReadInput(S_SEARCHINFO *info) {
   // Process commands if input is not empty
   if (strlen(input) > 0) {
     if (!strncmp(input, "quit", 4)) {
-      info->quit = TRUE;
+      info->quit = 1;
     }
   }
 }

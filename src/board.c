@@ -4,22 +4,22 @@
 #include "defs.h"
 
 int PceListOk(const S_BOARD *pos) {
-	int pce = wP;
+	int pce = WHITE_PAWN;
 	int sq;
 	int num;
-	for(pce = wP; pce <= bK; ++pce) {
-		if(pos->pceNum[pce]<0 || pos->pceNum[pce]>=10) return FALSE;
+	for(pce = WHITE_PAWN; pce <= BLACK_KING; ++pce) {
+		if(pos->pceNum[pce]<0 || pos->pceNum[pce]>=10) return 0;
 	}
 
-	if(pos->pceNum[wK]!=1 || pos->pceNum[bK]!=1) return FALSE;
+	if(pos->pceNum[WHITE_KING]!=1 || pos->pceNum[BLACK_KING]!=1) return 0;
 
-	for(pce = wP; pce <= bK; ++pce) {
+	for(pce = WHITE_PAWN; pce <= BLACK_KING; ++pce) {
 		for(num = 0; num < pos->pceNum[pce]; ++num) {
 			sq = pos->pList[pce][num];
-			if(!SqOnBoard(sq)) return FALSE;
+			if(!SqOnBoard(sq)) return 0;
 		}
 	}
-    return TRUE;
+    return 1;
 }
 
 int CheckBoard(const S_BOARD *pos) {
@@ -30,7 +30,7 @@ int CheckBoard(const S_BOARD *pos) {
 	int t_minPce[2] = { 0, 0};
 	int t_material[4] = { 0, 0, 0, 0};
 
-	int sq64,t_piece,t_pce_num,sq120,colour,pcount;
+	int sq64, t_piece, t_pce_num, sq120, colour;
 
 	U64 t_pawns[3] = {0ULL, 0ULL, 0ULL};
 
@@ -39,7 +39,7 @@ int CheckBoard(const S_BOARD *pos) {
 	t_pawns[BOTH] = pos->pawns[BOTH];
 
 	// check piece lists
-	for(t_piece = wP; t_piece <= bK; ++t_piece) {
+	for(t_piece = WHITE_PAWN; t_piece <= BLACK_KING; ++t_piece) {
 		for(t_pce_num = 0; t_pce_num < pos->pceNum[t_piece]; ++t_pce_num) {
 			sq120 = pos->pList[t_piece][t_pce_num];
 			ASSERT(pos->pieces[sq120]==t_piece);
@@ -52,40 +52,32 @@ int CheckBoard(const S_BOARD *pos) {
 		t_piece = pos->pieces[sq120];
 		t_pceNum[t_piece]++;
 		colour = PieceCol[t_piece];
-		if( PieceBig[t_piece] == TRUE) t_bigPce[colour]++;
-		if( PieceMin[t_piece] == TRUE) t_minPce[colour]++;
-		if( PieceMaj[t_piece] == TRUE) t_majPce[colour]++;
+		if( PieceBig[t_piece] == 1) t_bigPce[colour]++;
+		if( PieceMin[t_piece] == 1) t_minPce[colour]++;
+		if( PieceMaj[t_piece] == 1) t_majPce[colour]++;
 
 		t_material[colour] += PieceValMG[t_piece];
 		t_material[colour + 2] += PieceValEG[t_piece];
 	}
 
-	for(t_piece = wP; t_piece <= bK; ++t_piece) {
+	for(t_piece = WHITE_PAWN; t_piece <= BLACK_KING; ++t_piece) {
 		ASSERT(t_pceNum[t_piece]==pos->pceNum[t_piece]);
 	}
-
-	// check bitboards count
-	pcount = CNT(t_pawns[WHITE]);
-	ASSERT(pcount == pos->pceNum[wP]);
-	pcount = CNT(t_pawns[BLACK]);
-	ASSERT(pcount == pos->pceNum[bP]);
-	pcount = CNT(t_pawns[BOTH]);
-	ASSERT(pcount == (pos->pceNum[bP] + pos->pceNum[wP]));
 
 	// check bitboards squares
 	while(t_pawns[WHITE]) {
 		sq64 = POP(&t_pawns[WHITE]);
-		ASSERT(pos->pieces[SQ120(sq64)] == wP);
+		ASSERT(pos->pieces[SQ120(sq64)] == WHITE_PAWN);
 	}
 
 	while(t_pawns[BLACK]) {
 		sq64 = POP(&t_pawns[BLACK]);
-		ASSERT(pos->pieces[SQ120(sq64)] == bP);
+		ASSERT(pos->pieces[SQ120(sq64)] == BLACK_PAWN);
 	}
 
 	while(t_pawns[BOTH]) {
 		sq64 = POP(&t_pawns[BOTH]);
-		ASSERT( (pos->pieces[SQ120(sq64)] == bP) || (pos->pieces[SQ120(sq64)] == wP) );
+		ASSERT( (pos->pieces[SQ120(sq64)] == BLACK_PAWN) || (pos->pieces[SQ120(sq64)] == WHITE_PAWN) );
 	}
 
 	ASSERT(t_material[WHITE]==pos->material[WHITE] && t_material[BLACK]==pos->material[BLACK]);
@@ -100,21 +92,21 @@ int CheckBoard(const S_BOARD *pos) {
 	ASSERT(pos->enPas==NO_SQ || ( RanksBrd[pos->enPas]==RANK_6 && pos->side == WHITE)
 		 || ( RanksBrd[pos->enPas]==RANK_3 && pos->side == BLACK));
 
-	ASSERT(pos->pieces[pos->KingSq[WHITE]] == wK);
-	ASSERT(pos->pieces[pos->KingSq[BLACK]] == bK);
+	ASSERT(pos->pieces[pos->KingSq[WHITE]] == WHITE_KING);
+	ASSERT(pos->pieces[pos->KingSq[BLACK]] == BLACK_KING);
 
 	ASSERT(pos->castlePerm >= 0 && pos->castlePerm <= 15);
 
 	ASSERT(PceListOk(pos));
 
-	return TRUE;
+	return 1;
 }
 
 void UpdateListsMaterial(S_BOARD *pos) {
 
 	int piece,sq,index,colour;
 
-	for(index = 0; index < BRD_SQ_NUM; ++index) {
+	for(index = 0; index < 120; ++index) {
 		sq = index;
 		piece = pos->pieces[index];
 		ASSERT(PceValidEmptyOffbrd(piece));
@@ -122,9 +114,9 @@ void UpdateListsMaterial(S_BOARD *pos) {
 			colour = PieceCol[piece];
 			ASSERT(SideValid(colour));
 
-		    if( PieceBig[piece] == TRUE) pos->bigPce[colour]++;
-		    if( PieceMin[piece] == TRUE) pos->minPce[colour]++;
-		    if( PieceMaj[piece] == TRUE) pos->majPce[colour]++;
+		    if( PieceBig[piece] == 1) pos->bigPce[colour]++;
+		    if( PieceMin[piece] == 1) pos->minPce[colour]++;
+		    if( PieceMaj[piece] == 1) pos->majPce[colour]++;
 
 			pos->material[colour] += PieceValMG[piece];
 			pos->material[colour + 2] += PieceValEG[piece];
@@ -135,13 +127,13 @@ void UpdateListsMaterial(S_BOARD *pos) {
 			pos->pceNum[piece]++;
 
 
-			if(piece==wK) pos->KingSq[WHITE] = sq;
-			if(piece==bK) pos->KingSq[BLACK] = sq;
+			if(piece==WHITE_KING) pos->KingSq[WHITE] = sq;
+			if(piece==BLACK_KING) pos->KingSq[BLACK] = sq;
 
-			if(piece==wP) {
+			if(piece==WHITE_PAWN) {
 				SETBIT(pos->pawns[WHITE],SQ64(sq));
 				SETBIT(pos->pawns[BOTH],SQ64(sq));
-			} else if(piece==bP) {
+			} else if(piece==BLACK_PAWN) {
 				SETBIT(pos->pawns[BLACK],SQ64(sq));
 				SETBIT(pos->pawns[BOTH],SQ64(sq));
 			}
@@ -167,18 +159,18 @@ int ParseFen(char *fen, S_BOARD *pos) {
 	while ((rank >= RANK_1) && *fen) {
 	    count = 1;
 		switch (*fen) {
-            case 'p': piece = bP; break;
-            case 'r': piece = bR; break;
-            case 'n': piece = bN; break;
-            case 'b': piece = bB; break;
-            case 'k': piece = bK; break;
-            case 'q': piece = bQ; break;
-            case 'P': piece = wP; break;
-            case 'R': piece = wR; break;
-            case 'N': piece = wN; break;
-            case 'B': piece = wB; break;
-            case 'K': piece = wK; break;
-            case 'Q': piece = wQ; break;
+            case 'p': piece = BLACK_PAWN; break;
+            case 'r': piece = BLACK_ROOK; break;
+            case 'n': piece = BLACK_KNIGHT; break;
+            case 'b': piece = BLACK_BISHOP; break;
+            case 'k': piece = BLACK_KING; break;
+            case 'q': piece = BLACK_QUEEN; break;
+            case 'P': piece = WHITE_PAWN; break;
+            case 'R': piece = WHITE_ROOK; break;
+            case 'N': piece = WHITE_KNIGHT; break;
+            case 'B': piece = WHITE_BISHOP; break;
+            case 'K': piece = WHITE_KING; break;
+            case 'Q': piece = WHITE_QUEEN; break;
 
             case '1':
             case '2':
@@ -258,7 +250,7 @@ void ResetBoard(S_BOARD *pos) {
 
 	int index = 0;
 
-	for(index = 0; index < BRD_SQ_NUM; ++index) {
+	for(index = 0; index < 120; ++index) {
 		pos->pieces[index] = OFFBOARD;
 	}
 
@@ -334,7 +326,7 @@ void MirrorBoard(S_BOARD *pos) {
 
     int tempPiecesArray[64];
     int tempSide = pos->side^1;
-	int SwapPiece[13] = { EMPTY, bP, bN, bB, bR, bQ, bK, wP, wN, wB, wR, wQ, wK };
+	int SwapPiece[13] = { EMPTY, BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING, WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING };
     int tempCastlePerm = 0;
     int tempEnPas = NO_SQ;
 

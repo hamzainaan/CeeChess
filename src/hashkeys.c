@@ -9,10 +9,10 @@ U64 GeneratePosKey(const S_BOARD *pos) {
 	int piece = EMPTY;
 	
 	// pieces
-	for(sq = 0; sq < BRD_SQ_NUM; ++sq) {
+	for(sq = 0; sq < 120; ++sq) {
 		piece = pos->pieces[sq];
 		if(piece!=NO_SQ && piece!=EMPTY && piece != OFFBOARD) {
-			ASSERT(piece>=wP && piece<=bK);
+			ASSERT(piece>=WHITE_PAWN && piece<=BLACK_KING);
 			finalKey ^= PieceKeys[piece][sq];
 		}		
 	}
@@ -22,7 +22,7 @@ U64 GeneratePosKey(const S_BOARD *pos) {
 	}
 		
 	if(pos->enPas != NO_SQ) {
-		ASSERT(pos->enPas>=0 && pos->enPas<BRD_SQ_NUM);
+		ASSERT(pos->enPas>=0 && pos->enPas<120);
 		ASSERT(SqOnBoard(pos->enPas));
 		ASSERT(RanksBrd[pos->enPas] == RANK_3 || RanksBrd[pos->enPas] == RANK_6);
 		finalKey ^= PieceKeys[EMPTY][pos->enPas];

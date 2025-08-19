@@ -18,12 +18,12 @@ int SqAttacked(const int sq, const int side, const S_BOARD *pos) {
 	
 	// pawns
 	if(side == WHITE) {
-		if(pos->pieces[sq-11] == wP || pos->pieces[sq-9] == wP) {
-			return TRUE;
+		if(pos->pieces[sq-11] == WHITE_PAWN || pos->pieces[sq-9] == WHITE_PAWN) {
+			return 1;
 		}
 	} else {
-		if(pos->pieces[sq+11] == bP || pos->pieces[sq+9] == bP) {
-			return TRUE;
+		if(pos->pieces[sq+11] == BLACK_PAWN || pos->pieces[sq+9] == BLACK_PAWN) {
+			return 1;
 		}	
 	}
 	
@@ -32,7 +32,7 @@ int SqAttacked(const int sq, const int side, const S_BOARD *pos) {
 		pce = pos->pieces[sq + KnDir[index]];
 		ASSERT(PceValidEmptyOffbrd(pce));
 		if(pce != OFFBOARD && IsKn(pce) && PieceCol[pce]==side) {
-			return TRUE;
+			return 1;
 		}
 	}
 	
@@ -46,7 +46,7 @@ int SqAttacked(const int sq, const int side, const S_BOARD *pos) {
 		while(pce != OFFBOARD) {
 			if(pce != EMPTY) {
 				if(IsRQ(pce) && PieceCol[pce] == side) {
-					return TRUE;
+					return 1;
 				}
 				break;
 			}
@@ -66,7 +66,7 @@ int SqAttacked(const int sq, const int side, const S_BOARD *pos) {
 		while(pce != OFFBOARD) {
 			if(pce != EMPTY) {
 				if(IsBQ(pce) && PieceCol[pce] == side) {
-					return TRUE;
+					return 1;
 				}
 				break;
 			}
@@ -81,10 +81,10 @@ int SqAttacked(const int sq, const int side, const S_BOARD *pos) {
 		pce = pos->pieces[sq + KiDir[index]];
 		ASSERT(PceValidEmptyOffbrd(pce));
 		if(pce != OFFBOARD && IsKi(pce) && PieceCol[pce]==side) {
-			return TRUE;
+			return 1;
 		}
 	}
 	
-	return FALSE;
+	return 0;
 	
 }

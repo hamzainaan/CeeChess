@@ -3,6 +3,8 @@
 #include "stdio.h"
 #include "defs.h"
 #include "string.h"
+#include "uci_options.h"
+#include "config.h"
 
 #define INPUTBUFFER 400 * 6
 
@@ -10,7 +12,7 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 
 	int depth = -1, movestogo = 30, movetime = -1, time = -1, inc = 0;
     char *ptr = NULL;
-	info->timeset = FALSE;
+	info->timeset = 0;
 
 	if ((ptr = strstr(line,"infinite"))) {
 		;
@@ -53,7 +55,7 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 	info->depth = depth;
 
 	if(time != -1) {
-		info->timeset = TRUE;
+		info->timeset = 1;
 		time /= movestogo;
 		time -= 50;
 		info->stoptime = info->starttime + time + inc;
@@ -90,7 +92,7 @@ void ParsePosition(char* lineIn, S_BOARD *pos) {
         ptrChar += 6;
         while(*ptrChar) {
               move = ParseMove(ptrChar,pos);
-			  if(move == NOMOVE) break;
+			  if(move == 0) break;
 			  MakeMove(pos, move);
               pos->ply=0;
               while(*ptrChar && *ptrChar!= ' ') ptrChar++;
@@ -104,15 +106,19 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
+	// Initialize UCI options
+	InitUciOptions();
+	// Set hash table pointer for option handlers
+	SetHashTablePtr(table);
+
 	char line[INPUTBUFFER];
-  	printf("id name %s\n",NAME);
-  	printf("id author Bctboi23\n");
-	printf("option name Hash type spin default 256 min 4 max %d\n",MAX_HASH);
-  	printf("uciok\n\n");
+  	printf("id name %s\n",FULL_ENGINE_NAME);
+  	printf("id author %s\n",ENGINE_AUTHOR);
+	// Print all UCI options
+	PrintUciOptions();
+  	printf("uciok\n");
 
-	int MB = 256;
-
-	while (TRUE) {
+	while (1) {
 		memset(&line[0], 0, sizeof(line));
         fflush(stdout);
         if (!fgets(line, INPUTBUFFER, stdin))
@@ -130,27 +136,40 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
 			ClearHashTable(table);
             ParsePosition("position startpos\n", pos);
         } else if (!strncmp(line, "go", 2)) {
-            printf("Seen Go..\n");
             ParseGo(line, info, pos, table);
         } else if (!strncmp(line, "run", 3)) {
             ParseFen(START_FEN, pos);
             ParseGo("go infinite", info, pos, table);
         } else if (!strncmp(line, "quit", 4)) {
-            info->quit = TRUE;
+            info->quit = 1;
             break;
         } else if (!strncmp(line, "uci", 3)) {
-            printf("id name %s\n",NAME);
-            printf("id author Bctboi23\n");
+            printf("id name %s\n",FULL_ENGINE_NAME);
+            printf("id author %s\n",ENGINE_AUTHOR);
+            PrintUciOptions();
             printf("uciok\n");
         } else if (!strncmp(line, "debug", 4)) {
             DebugAnalysisTest(pos, info, table);
             break;
-        } else if (!strncmp(line, "setoption name Hash value ", 26)) {
-			sscanf(line,"%*s %*s %*s %*s %d",&MB);
-			if(MB < 4) MB = 4;
-			if(MB > MAX_HASH) MB = MAX_HASH;
-			printf("Set Hash to %d MB\n",MB);
-			InitHashTable(table, MB);
+        } else if (!strncmp(line, "setoption name ", 15)) {
+			char option_name[64] = "";
+			char option_value[64] = "";
+			char *name_start = line + 15;
+			char *value_start = strstr(name_start, " value ");
+			
+			if (value_start != NULL) {
+				// Extract option name
+				int name_len = value_start - name_start;
+				strncpy(option_name, name_start, name_len);
+				option_name[name_len] = '\0';
+				
+				// Extract option value
+				value_start += 7; // Skip " value "
+				strcpy(option_value, value_start);
+				
+				// Process the option
+				ProcessUciOption(option_name, option_value);
+			}
 		}
 		if(info->quit) break;
     }

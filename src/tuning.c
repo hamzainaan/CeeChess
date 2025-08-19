@@ -2,6 +2,7 @@
 
 #include "stdio.h"
 #include "defs.h"
+#include "config.h"
 #include "tuning.h"
 #include "string.h"
 #include "math.h"
@@ -11,24 +12,24 @@ static int MaterialDrawTunable(const S_BOARD *pos) {
 
 	ASSERT(CheckBoard(pos));
 
-    if (!pos->pceNum[wR] && !pos->pceNum[bR] && !pos->pceNum[wQ] && !pos->pceNum[bQ]) {
-	  if (!pos->pceNum[bB] && !pos->pceNum[wB]) {
-	      if (pos->pceNum[wN] < 3 && pos->pceNum[bN] < 3) {  return TRUE; }
-	  } else if (!pos->pceNum[wN] && !pos->pceNum[bN]) {
-	     if (abs(pos->pceNum[wB] - pos->pceNum[bB]) < 2) { return TRUE; }
-	  } else if ((pos->pceNum[wN] < 3 && !pos->pceNum[wB]) || (pos->pceNum[wB] == 1 && !pos->pceNum[wN])) {
-	    if ((pos->pceNum[bN] < 3 && !pos->pceNum[bB]) || (pos->pceNum[bB] == 1 && !pos->pceNum[bN]))  { return TRUE; }
+    if (!pos->pceNum[WHITE_ROOK] && !pos->pceNum[BLACK_ROOK] && !pos->pceNum[WHITE_QUEEN] && !pos->pceNum[BLACK_QUEEN]) {
+	  if (!pos->pceNum[BLACK_BISHOP] && !pos->pceNum[WHITE_BISHOP]) {
+	      if (pos->pceNum[WHITE_KNIGHT] < 3 && pos->pceNum[BLACK_KNIGHT] < 3) {  return 1; }
+	  } else if (!pos->pceNum[WHITE_KNIGHT] && !pos->pceNum[BLACK_KNIGHT]) {
+	     if (abs(pos->pceNum[WHITE_BISHOP] - pos->pceNum[BLACK_BISHOP]) < 2) { return 1; }
+	  } else if ((pos->pceNum[WHITE_KNIGHT] < 3 && !pos->pceNum[WHITE_BISHOP]) || (pos->pceNum[WHITE_BISHOP] == 1 && !pos->pceNum[WHITE_KNIGHT])) {
+	    if ((pos->pceNum[BLACK_KNIGHT] < 3 && !pos->pceNum[BLACK_BISHOP]) || (pos->pceNum[BLACK_BISHOP] == 1 && !pos->pceNum[BLACK_KNIGHT]))  { return 1; }
 	  }
-	} else if (!pos->pceNum[wQ] && !pos->pceNum[bQ]) {
-        if (pos->pceNum[wR] == 1 && pos->pceNum[bR] == 1) {
-            if ((pos->pceNum[wN] + pos->pceNum[wB]) < 2 && (pos->pceNum[bN] + pos->pceNum[bB]) < 2)	{ return TRUE; }
-        } else if (pos->pceNum[wR] == 1 && !pos->pceNum[bR]) {
-            if ((pos->pceNum[wN] + pos->pceNum[wB] == 0) && (((pos->pceNum[bN] + pos->pceNum[bB]) == 1) || ((pos->pceNum[bN] + pos->pceNum[bB]) == 2))) { return TRUE; }
-        } else if (pos->pceNum[bR] == 1 && !pos->pceNum[wR]) {
-            if ((pos->pceNum[bN] + pos->pceNum[bB] == 0) && (((pos->pceNum[wN] + pos->pceNum[wB]) == 1) || ((pos->pceNum[wN] + pos->pceNum[wB]) == 2))) { return TRUE; }
+	} else if (!pos->pceNum[WHITE_QUEEN] && !pos->pceNum[BLACK_QUEEN]) {
+        if (pos->pceNum[WHITE_ROOK] == 1 && pos->pceNum[BLACK_ROOK] == 1) {
+            if ((pos->pceNum[WHITE_KNIGHT] + pos->pceNum[WHITE_BISHOP]) < 2 && (pos->pceNum[BLACK_KNIGHT] + pos->pceNum[BLACK_BISHOP]) < 2)	{ return 1; }
+        } else if (pos->pceNum[WHITE_ROOK] == 1 && !pos->pceNum[BLACK_ROOK]) {
+            if ((pos->pceNum[WHITE_KNIGHT] + pos->pceNum[WHITE_BISHOP] == 0) && (((pos->pceNum[BLACK_KNIGHT] + pos->pceNum[BLACK_BISHOP]) == 1) || ((pos->pceNum[BLACK_KNIGHT] + pos->pceNum[BLACK_BISHOP]) == 2))) { return 1; }
+        } else if (pos->pceNum[BLACK_ROOK] == 1 && !pos->pceNum[WHITE_ROOK]) {
+            if ((pos->pceNum[BLACK_KNIGHT] + pos->pceNum[BLACK_BISHOP] == 0) && (((pos->pceNum[WHITE_KNIGHT] + pos->pceNum[WHITE_BISHOP]) == 1) || ((pos->pceNum[WHITE_KNIGHT] + pos->pceNum[WHITE_BISHOP]) == 2))) { return 1; }
         }
     }
-  return FALSE;
+  return 0;
 }
 
 static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
@@ -36,7 +37,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	ASSERT(CheckBoard(pos));
 
 	// test for drawn position before doing anything
-	if(!pos->pceNum[wP] && !pos->pceNum[bP] && MaterialDrawTunable(pos) == TRUE) {
+	if(!pos->pceNum[WHITE_PAWN] && !pos->pceNum[BLACK_PAWN] && MaterialDrawTunable(pos) == 1) {
 		return 0;
 	}
 
@@ -55,7 +56,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	int kingScoreB = 0;
 
 	// get king squares to calculate king tropism
-	pce = wK;
+	pce = WHITE_KING;
 	sq = pos->pList[pce][0];
 	int wKsq64 = SQ64(sq);
 	ASSERT(SqOnBoard(sq));
@@ -71,7 +72,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreB -= params->TKingSemiOpen * !(pos->pawns[WHITE] & FileBBMask[FilesBrd[i_sq]]);
 	}
 
-	pce = bK;
+	pce = BLACK_KING;
 	sq = pos->pList[pce][0];
 	int bKsq64 = SQ64(sq);
 	ASSERT(SqOnBoard(sq));
@@ -87,7 +88,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreW += params->TKingSemiOpen * !(pos->pawns[BLACK] & FileBBMask[FilesBrd[i_sq]]);
 	}
 
-	pce = wP;
+	pce = WHITE_PAWN;
 	scoreMG += pos->pceNum[pce] * params->TPieceValMG[0];
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[0];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -103,13 +104,13 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		scoreEG += params->TPawnEG[SQ64(sq)];
 
 		if( (IsolatedMask[SQ64(sq)] & pos->pawns[WHITE]) == 0) {
-			//printf("wP Iso:%s\n",PrSq(sq));
+			//printf("WHITE_PAWN Iso:%s\n",PrSq(sq));
 			scoreMG += params->TPawnIsolatedMG;
 			scoreEG += params->TPawnIsolatedEG;
 		}
 
 		if( (WhitePassedMask[SQ64(sq)] & pos->pawns[BLACK]) == 0) {
-			//printf("wP Passed:%s\n",PrSq(sq));
+			//printf("WHITE_PAWN Passed:%s\n",PrSq(sq));
 			passed = 1;
 			scoreMG += params->TPawnPassedMG[RanksBrd[sq]];
 			scoreEG += params->TPawnPassedEG[RanksBrd[sq]];
@@ -128,7 +129,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 
 	}
 
-	pce = bP;
+	pce = BLACK_PAWN;
 	scoreMG -= pos->pceNum[pce] * params->TPieceValMG[0];
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[0];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -144,13 +145,13 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		scoreEG -= params->TPawnEG[MIRROR64(SQ64(sq))];
 
 		if( (IsolatedMask[SQ64(sq)] & pos->pawns[BLACK]) == 0) {
-			//printf("bP Iso:%s\n",PrSq(sq));
+			//printf("BLACK_PAWN Iso:%s\n",PrSq(sq));
 			scoreMG -= params->TPawnIsolatedMG;
 			scoreEG -= params->TPawnIsolatedEG;
 		}
 
 		if( (BlackPassedMask[SQ64(sq)] & pos->pawns[WHITE]) == 0) {
-			//printf("bP Passed:%s\n",PrSq(sq));
+			//printf("BLACK_PAWN Passed:%s\n",PrSq(sq));
 			passed = 1;
 			scoreMG -= params->TPawnPassedMG[7 - RanksBrd[sq]];
 			scoreEG -= params->TPawnPassedEG[7 - RanksBrd[sq]];
@@ -168,7 +169,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		}
 	}
 
-	pce = wN;
+	pce = WHITE_KNIGHT;
 	scoreMG += pos->pceNum[pce] * params->TPieceValMG[1];
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[1];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -185,7 +186,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreW += (params->TTropismValues[0] * DistTable[SQ64(sq)][bKsq64]) / 16;
 	}
 
-	pce = bN;
+	pce = BLACK_KNIGHT;
 	scoreMG -= pos->pceNum[pce] * params->TPieceValMG[1];
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[1];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -202,7 +203,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreB -= (params->TTropismValues[0] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
 
-	pce = wB;
+	pce = WHITE_BISHOP;
 	scoreMG += pos->pceNum[pce] * params->TPieceValMG[2];
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[2];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -220,7 +221,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreW += (params->TTropismValues[1] * (DistTable[SQ64(sq)][bKsq64] + diagonal_bonus)) / 16;
 	}
 
-	pce = bB;
+	pce = BLACK_BISHOP;
 	scoreMG -= pos->pceNum[pce] * params->TPieceValMG[2];
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[2];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -238,7 +239,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreB -= (params->TTropismValues[1] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
 	}
 
-	pce = wR;
+	pce = WHITE_ROOK;
 	scoreMG += pos->pceNum[pce] * params->TPieceValMG[3];
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[3];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -264,7 +265,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreW += (params->TTropismValues[2] * DistTable[SQ64(sq)][bKsq64]) / 16;
 	}
 
-	pce = bR;
+	pce = BLACK_ROOK;
 	scoreMG -= pos->pceNum[pce] * params->TPieceValMG[3];
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[3];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -290,7 +291,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreB -= (params->TTropismValues[2] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
 
-	pce = wQ;
+	pce = WHITE_QUEEN;
 	scoreMG += pos->pceNum[pce] * params->TPieceValMG[4];
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[4];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -317,7 +318,7 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreW += (params->TTropismValues[3] * (DistTable[SQ64(sq)][bKsq64] + diagonal_bonus)) / 16;
 	}
 
-	pce = bQ;
+	pce = BLACK_QUEEN;
 	scoreMG -= pos->pceNum[pce] * params->TPieceValMG[4];
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[4];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
@@ -344,11 +345,11 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		kingScoreB -= (params->TTropismValues[3] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
 	}
 	//8/p6k/6p1/5p2/P4K2/8/5pB1/8 b - - 2 62
-	if(pos->pceNum[wB] >= 2) {
+	if(pos->pceNum[WHITE_BISHOP] >= 2) {
 		scoreMG += params->TBishopPairMG;
 		scoreEG += params->TBishopPairEG;
 	}
-	if(pos->pceNum[bB] >= 2) {
+	if(pos->pceNum[BLACK_BISHOP] >= 2) {
 		scoreMG -= params->TBishopPairMG;
 		scoreEG -= params->TBishopPairEG;
 	}

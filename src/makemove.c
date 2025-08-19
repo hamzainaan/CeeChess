@@ -2,6 +2,7 @@
 
 #include "defs.h"
 #include "stdio.h"
+#include "config.h"
 
 #define HASH_PCE(pce,sq) (pos->posKey ^= (PieceKeys[(pce)][(sq)]))
 #define HASH_CA (pos->posKey ^= (CastleKeys[(pos->castlePerm)]))
@@ -115,7 +116,7 @@ static void MovePiece(const int from, const int to, S_BOARD *pos) {
     ASSERT(PieceValid(pce));
 
 #ifdef DEBUG
-	int t_PieceNum = FALSE;
+	int t_PieceNum = 0;
 #endif
 
 	HASH_PCE(pce,from);
@@ -135,7 +136,7 @@ static void MovePiece(const int from, const int to, S_BOARD *pos) {
 		if(pos->pList[pce][index] == from) {
 			pos->pList[pce][index] = to;
 #ifdef DEBUG
-			t_PieceNum = TRUE;
+			t_PieceNum = 1;
 #endif
 			break;
 		}
@@ -160,13 +161,13 @@ int MakeMove(S_BOARD *pos, int move) {
 
 	pos->history[pos->hisPly].posKey = pos->posKey;
 
-	if(move & MFLAGEP) {
+	if(move & 0x40000) {
         if(side == WHITE) {
             ClearPiece(to-10,pos);
         } else {
             ClearPiece(to+10,pos);
         }
-    } else if (move & MFLAGCA) {
+    } else if (move & 0x1000000) {
         switch(to) {
             case C1:
                 MovePiece(A1, D1, pos);
@@ -180,7 +181,7 @@ int MakeMove(S_BOARD *pos, int move) {
             case G8:
                 MovePiece(H8, F8, pos);
 			break;
-            default: ASSERT(FALSE); break;
+            default: ASSERT(0); break;
         }
     }
 
@@ -215,7 +216,7 @@ int MakeMove(S_BOARD *pos, int move) {
 
 	if(PiecePawn[pos->pieces[from]]) {
         pos->fiftyMove = 0;
-        if(move & MFLAGPS) {
+        if(move & 0x80000) {
             if(side==WHITE) {
                 pos->enPas=from+10;
                 ASSERT(RanksBrd[pos->enPas]==RANK_3);
@@ -248,10 +249,10 @@ int MakeMove(S_BOARD *pos, int move) {
 
 	if(SqAttacked(pos->KingSq[side],pos->side,pos))  {
         TakeMove(pos);
-        return FALSE;
+        return 0;
     }
 
-	return TRUE;
+	return 1;
 
 }
 
@@ -285,19 +286,19 @@ void TakeMove(S_BOARD *pos) {
     pos->side ^= 1;
     HASH_SIDE;
 
-	if(MFLAGEP & move) {
+	if(0x40000 & move) {
         if(pos->side == WHITE) {
-            AddPiece(to-10, pos, bP);
+            AddPiece(to-10, pos, BLACK_PAWN);
         } else {
-            AddPiece(to+10, pos, wP);
+            AddPiece(to+10, pos, WHITE_PAWN);
         }
-    } else if(MFLAGCA & move) {
+    } else if(0x1000000 & move) {
         switch(to) {
             case C1: MovePiece(D1, A1, pos); break;
             case C8: MovePiece(D8, A8, pos); break;
             case G1: MovePiece(F1, H1, pos); break;
             case G8: MovePiece(F8, H8, pos); break;
-            default: ASSERT(FALSE); break;
+            default: ASSERT(0); break;
         }
     }
 
@@ -316,7 +317,7 @@ void TakeMove(S_BOARD *pos) {
 	if(PROMOTED(move) != EMPTY)   {
         ASSERT(PieceValid(PROMOTED(move)) && !PiecePawn[PROMOTED(move)]);
         ClearPiece(from, pos);
-        AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? wP : bP));
+        AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? WHITE_PAWN : BLACK_PAWN));
     }
 
     ASSERT(CheckBoard(pos));
@@ -334,7 +335,7 @@ void MakeNullMove(S_BOARD *pos) {
 
     if(pos->enPas != NO_SQ) HASH_EP;
 
-    pos->history[pos->hisPly].move = NOMOVE;
+    pos->history[pos->hisPly].move = 0;
     pos->history[pos->hisPly].fiftyMove = pos->fiftyMove;
     pos->history[pos->hisPly].enPas = pos->enPas;
     pos->history[pos->hisPly].castlePerm = pos->castlePerm;

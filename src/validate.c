@@ -1,12 +1,13 @@
 // validate.c
 
 #include "defs.h"
+#include "config.h"
 #include "stdio.h"
 #include "string.h"
 
 int MoveListOk(const S_MOVELIST *list,  const S_BOARD *pos) {
 	if(list->count < 0 || list->count >= MAXPOSITIONMOVES) {
-		return FALSE;
+		return 0;
 	}
 
 	int MoveNum;
@@ -16,15 +17,15 @@ int MoveListOk(const S_MOVELIST *list,  const S_BOARD *pos) {
 		to = TOSQ(list->moves[MoveNum].move);
 		from = FROMSQ(list->moves[MoveNum].move);
 		if(!SqOnBoard(to) || !SqOnBoard(from)) {
-			return FALSE;
+			return 0;
 		}
 		if(!PieceValid(pos->pieces[from])) {
 			PrintBoard(pos);
-			return FALSE;
+			return 0;
 		}
 	}
 
-	return TRUE;
+	return 1;
 }
 
 int SqIs120(const int sq) {
@@ -47,11 +48,11 @@ int FileRankValid(const int fr) {
 }
 
 int PieceValidEmpty(const int pce) {
-	return (pce >= EMPTY && pce <= bK) ? 1 : 0;
+	return (pce >= EMPTY && pce <= BLACK_KING) ? 1 : 0;
 }
 
 int PieceValid(const int pce) {
-	return (pce >= wP && pce <= bK) ? 1 : 0;
+	return (pce >= WHITE_PAWN && pce <= BLACK_KING) ? 1 : 0;
 }
 
 void DebugAnalysisTest(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
@@ -61,7 +62,7 @@ void DebugAnalysisTest(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
     char lineIn [1024];
 
 	info->depth = MAXDEPTH;
-	info->timeset = TRUE;
+	info->timeset = 1;
 	int time = 1140000;
 
 

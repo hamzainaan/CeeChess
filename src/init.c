@@ -10,7 +10,7 @@
 					(U64)rand() << 45 | \
 					((U64)rand() & 0xf) << 60 )
 
-int Sq120ToSq64[BRD_SQ_NUM];
+int Sq120ToSq64[120];
 int Sq64ToSq120[64];
 
 U64 SetMask[64];
@@ -20,8 +20,8 @@ U64 PieceKeys[13][120];
 U64 SideKey;
 U64 CastleKeys[16];
 
-int FilesBrd[BRD_SQ_NUM];
-int RanksBrd[BRD_SQ_NUM];
+int FilesBrd[120];
+int RanksBrd[120];
 
 U64 FileBBMask[8];
 U64 RankBBMask[8];
@@ -135,7 +135,7 @@ void InitFilesRanksBrd() {
 	int rank = RANK_1;
 	int sq = A1;
 
-	for(index = 0; index < BRD_SQ_NUM; ++index) {
+	for(index = 0; index < 120; ++index) {
 		FilesBrd[index] = OFFBOARD;
 		RanksBrd[index] = OFFBOARD;
 	}
@@ -186,7 +186,7 @@ void InitSq120To64() {
 	int rank = RANK_1;
 	int sq = A1;
 	int sq64 = 0;
-	for(index = 0; index < BRD_SQ_NUM; ++index) {
+	for(index = 0; index < 120; ++index) {
 		Sq120ToSq64[index] = 65;
 	}
 
