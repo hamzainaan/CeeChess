@@ -238,6 +238,13 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		return Score;
 	}
 
+	// Internal Iterative Deepening (IID)
+	// If we don't have a PV move and depth is sufficient, do a shallower search to find a good move
+	if (PvMove == 0 && depth >= 4 && !InCheck) {
+		Score = AlphaBeta(alpha, beta, depth - 2, pos, info, DoNull, DoLMR, table);
+		PvMove = ProbePvMove(pos, table);
+	}
+
 	int positionEval = EvalPosition(pos);
 
 	// Razoring (prunes near alpha)
