@@ -167,6 +167,19 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
 				
 				// Process the option
 				ProcessUciOption(option_name, option_value);
+			} else {
+				// For button type options (no value needed)
+				// Just copy the name and pass empty value
+				strcpy(option_name, name_start);
+				// Remove any trailing whitespace or newline
+				char *end = option_name + strlen(option_name) - 1;
+				while (end > option_name && (*end == ' ' || *end == '\n' || *end == '\r')) {
+					*end = '\0';
+					end--;
+				}
+				
+				// Process the button option
+				ProcessUciOption(option_name, "");
 			}
 		}
 		if(info->quit) break;

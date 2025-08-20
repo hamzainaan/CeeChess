@@ -6,6 +6,7 @@
 
 // Forward declarations for option handlers
 void HashOptionChanged(int value);
+void ClearHashOptionPressed(int value);
 
 // UCI options array
 S_UCI_OPTION UciOptions[] = {
@@ -17,6 +18,15 @@ S_UCI_OPTION UciOptions[] = {
         MAX_HASH_SIZE,
         DEFAULT_HASH_SIZE,
         HashOptionChanged
+    },
+    {
+        "Clear Hash",
+        UCI_OPTION_BUTTON,
+        0,  // default value (not used for buttons)
+        0,  // min value (not used for buttons)
+        0,  // max value (not used for buttons)
+        0,  // current value (not used for buttons)
+        ClearHashOptionPressed
     }
     // Add more options here
 };
@@ -79,6 +89,9 @@ void PrintUciOptions() {
                        UciOptions[i].min_value,
                        UciOptions[i].max_value);
                 break;
+            case UCI_OPTION_BUTTON:
+                printf("option name %s type button\n", UciOptions[i].name);
+                break;
             // Add cases for other option types
             default:
                 break;
@@ -89,7 +102,15 @@ void PrintUciOptions() {
 // Handler for Hash option change
 void HashOptionChanged(int value) {
     if (HashTablePtr != NULL) {
-        printf("Set Hash to %d MB\n", value);
+        printf("info string set hash to %d MB.\n", value);
         InitHashTable(HashTablePtr, value);
+    }
+}
+
+// Handler for Clear Hash button press
+void ClearHashOptionPressed(int value) {
+    if (HashTablePtr != NULL) {
+        printf("info string hash table cleared.\n");
+        ClearHashTable(HashTablePtr);
     }
 }
