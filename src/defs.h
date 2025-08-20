@@ -111,6 +111,7 @@ typedef struct {
 	float fh;
 	float fhf;
 	int nullCut;
+	int singularExt;
 } S_SEARCHINFO;
 
 #define FROMSQ(m) ((m) & 0x7F)

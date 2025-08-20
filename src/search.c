@@ -32,6 +32,10 @@ static const int AspirationDelta = 25;
 static const int ProbcutDepth = 4;
 static const int ProbcutMargin = 100;
 
+// Singular Extensions Values
+static const int SingularExtensionDepth = 6;
+static const int SingularMargin = 50;
+
 void InitSearch() {
 	// creating the LMR table entries (idea from Ethereal)
 	for (int moveDepth = 1; moveDepth < 64; moveDepth++)
@@ -111,6 +115,7 @@ static void ClearForSearch(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table)
 	info->nodes = 0;
 	info->fh = 0;
 	info->fhf = 0;
+	info->singularExt = 0;
 }
 
 static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
@@ -191,6 +196,75 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 	return alpha;
 }
 
+// Forward declaration for AlphaBeta
+static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO *info, int DoNull, int DoLMR, S_HASHTABLE *table);
+
+static int IsSingular(int move, int depth, S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
+	// Check if a move is singular (much better than all other moves)
+	int score;
+	int ttMove = 0;
+	int ttScore = 0;
+	int ttDepth = 0;
+	int bound = -INFINITE;
+
+	// Get the transposition table entry
+	int found = ProbeHashEntry(pos, table, &ttMove, &ttScore, -INFINITE, INFINITE, 0);
+	
+	// If the move is not the hash move, it's not singular
+	if (!found || ttMove != move) {
+		return 0;
+	}
+
+	// Get the depth from the hash entry
+	ttDepth = table->pTable[pos->posKey % table->numEntries].depth;
+
+	// If the depth is too low, it's not singular
+	if (ttDepth < depth - 3) {
+		return 0;
+	}
+
+	// Set a reduced beta for the search
+	int reducedBeta = ttScore - SingularMargin;
+
+	// Search with a null window around the reduced beta
+	S_MOVELIST list[1];
+	GenerateAllMoves(pos, list);
+
+	for (int i = 0; i < list->count; ++i) {
+		if (list->moves[i].move == move) {
+			continue; // Skip the move we're testing for singularity
+		}
+
+		if (!MakeMove(pos, list->moves[i].move)) {
+			continue;
+		}
+
+		// Search with reduced depth and a null window
+		score = -AlphaBeta(-reducedBeta-1, -reducedBeta, depth - 3, pos, info, 1, 1, table);
+
+		TakeMove(pos);
+
+		// If search was stopped, return 0
+		if (info->stopped == 1) {
+			return 0;
+		}
+
+		// If any move beats the reduced beta, the move is not singular
+		if (score >= reducedBeta) {
+			return 0;
+		}
+
+		// Keep track of the best alternative move
+		if (score > bound) {
+			bound = score;
+		}
+	}
+
+	// If all moves failed low by a significant margin, the move is singular
+	info->singularExt++;
+	return 1;
+}
+
 static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO *info, int DoNull, int DoLMR, S_HASHTABLE *table) {
 
 	ASSERT(CheckBoard(pos));
@@ -243,6 +317,16 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 	if (PvMove == 0 && depth >= 4 && !InCheck) {
 		Score = AlphaBeta(alpha, beta, depth - 2, pos, info, DoNull, DoLMR, table);
 		PvMove = ProbePvMove(pos, table);
+	}
+
+	// Singular Extensions
+	// If we have a PV move and depth is sufficient, check if it's singular (much better than all other moves)
+	if (PvMove != 0 && depth >= SingularExtensionDepth && !InCheck && abs(beta) < ISMATE) {
+		// Check if the move is singular
+		if (IsSingular(PvMove, depth, pos, info, table)) {
+			// Extend the search depth for this move
+			depth++;
+		}
 	}
 
 	int positionEval = EvalPosition(pos);
@@ -510,9 +594,9 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         
         if(abs(bestScore) > ISMATE) {
             bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-            printf("info score mate %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
+            printf("info score mate %d depth %d nodes %ld nps %lld time %d singularext %d ", bestScore, currentDepth, info->nodes, nps, time, info->singularExt);
         } else {
-            printf("info score cp %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
+            printf("info score cp %d depth %d nodes %ld nps %lld time %d singularext %d ", bestScore, currentDepth, info->nodes, nps, time, info->singularExt);
         }
 
         printf("pv");
