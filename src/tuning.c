@@ -842,8 +842,8 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 		FILE* out = fopen(fileOut, "w");
 		for (int i = 0; i < 28; i++)
 			fprintf(out, "-");
-		fprintf(log, "\n--- Epoch %d ---\n - Train Error: %lf\n - Valid Error: %lf\n", epoch, train_error, valid_error);
-		printParamsToFile(params, log);
+		fprintf(out, "\n--- Epoch %d ---\n - Train Error: %lf\n - Valid Error: %lf\n", epoch, train_error, valid_error);
+		printParamsToFile(params, out);
 		fclose(out);
 
 		free(shuffled_indices);
