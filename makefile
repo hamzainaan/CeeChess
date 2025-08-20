@@ -9,7 +9,7 @@ CC ?= gcc
 CFLAGS ?= -O3 -s -Wall -fopenmp
 LDFLAGS ?= -lm -fopenmp
 
-# Set target OS: windows or linux (default: detect from OS)
+# Set target OS: windows, linux or android (default: detect from OS)
 TARGET_OS ?= $(shell if [ "$(OS)" = "Windows_NT" ]; then echo windows; else echo linux; fi)
 
 ifeq ($(TARGET_OS),windows)
@@ -19,6 +19,15 @@ ifeq ($(TARGET_OS),windows)
 	BIN_DIR = ./bin
 	TARGET = $(BIN_DIR)/$(NAME)-$(VERSION)
 	OS_CFLAGS =
+else ifeq ($(TARGET_OS),android)
+	RM = rm -rf
+	EXE_EXTENSION = -android
+	SRC_DIR = ./src
+	BIN_DIR = ./bin
+	TARGET = $(BIN_DIR)/$(NAME)-$(VERSION)
+	OS_CFLAGS = -D ANDROID -D LINUX
+	CFLAGS := $(filter-out -fopenmp,$(CFLAGS))
+	LDFLAGS := $(filter-out -fopenmp,$(LDFLAGS))
 else
 	RM = rm -rf
 	EXE_EXTENSION = -linux
@@ -45,8 +54,9 @@ help:
 	@echo "Variables you can override:"
 	@echo "  NAME, VERSION, TARGET_OS, CC, CFLAGS, LDFLAGS"
 	@echo "Example: make NAME=myengine VERSION=2.0 TARGET_OS=windows CC=x86_64-w64-mingw32-gcc"
+	@echo "For Android: make TARGET_OS=android CC=/path/to/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
 
-$(TARGET)$(EXE_EXTENSION): $(SRCS) $(HEADERS)
+$(TARGET)$(EXE_EXTENSION): $(SRCS)
 	$(CC) $^ -o $@ $(CFLAGS) $(OS_CFLAGS) $(LDFLAGS)
 
 clean:
