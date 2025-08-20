@@ -6,8 +6,8 @@ VERSION ?= 1.5-dev
 
 # Allow override from command line, e.g. make TARGET_OS=windows CC=x86_64-w64-mingw32-gcc
 CC ?= gcc
-CFLAGS ?= -O3 -s -Wall
-LDFLAGS ?= -lm
+CFLAGS ?= -O3 -s -Wall -fopenmp
+LDFLAGS ?= -lm -fopenmp
 
 # Set target OS: windows or linux (default: detect from OS)
 TARGET_OS ?= $(shell if [ "$(OS)" = "Windows_NT" ]; then echo windows; else echo linux; fi)

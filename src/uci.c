@@ -99,6 +99,9 @@ void ParsePosition(char* lineIn, S_BOARD *pos) {
     }
 }
 
+// Forward declaration for TuneEval function
+extern void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_tanh);
+
 void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
 
 	setbuf(stdin, NULL);
@@ -149,6 +152,32 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         } else if (!strncmp(line, "debug", 4)) {
             DebugAnalysisTest(pos, info, table);
             break;
+        } else if (!strncmp(line, "tune", 4)) {
+            // Parse tune command
+            char *ptr = line + 5; // Skip "tune "
+            int tune_option = atoi(ptr);
+            
+            printf("Starting tuning process with option %d...\n", tune_option);
+            
+            // Set file paths relative to the engine's directory
+            char fileIn[] = "data.txt";
+            char fileOut[] = "out.txt";
+            char fileLog[] = "log.txt";
+            
+            // Call TuneEval with appropriate parameters based on tune option
+            if (tune_option == 0) {
+                // tune 0: Use sigmoid function
+                printf("Using sigmoid function for tuning\n");
+                TuneEval(pos, fileIn, fileOut, fileLog, 0);
+            } else if (tune_option == 1) {
+                // tune 1: Use tanh function
+                printf("Using tanh function for tuning\n");
+                TuneEval(pos, fileIn, fileOut, fileLog, 1);
+            } else {
+                printf("Invalid tune option. Use 'tune 0' for sigmoid or 'tune 1' for tanh\n");
+            }
+            
+            printf("Tuning process completed\n");
         } else if (!strncmp(line, "setoption name ", 15)) {
 			char option_name[64] = "";
 			char option_value[64] = "";

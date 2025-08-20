@@ -22,10 +22,10 @@ S_UCI_OPTION UciOptions[] = {
     {
         "Clear Hash",
         UCI_OPTION_BUTTON,
-        0,  // default value (not used for buttons)
-        0,  // min value (not used for buttons)
-        0,  // max value (not used for buttons)
-        0,  // current value (not used for buttons)
+        0,
+        0,
+        0,
+        0,
         ClearHashOptionPressed
     }
     // Add more options here

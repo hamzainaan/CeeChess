@@ -480,23 +480,33 @@ void readFENScores(char (*fenBuf)[MAX_FEN_LEN], double *scores, FILE* inputFile,
 }
 
 static double getError(S_BOARD *pos, S_EVAL_PARAMS *params, double K, char (*fenBuf)[MAX_FEN_LEN], double *scores, int numPos, int posOffset, int isTanh) {
-	double error = 0.0;
-	for (int i = posOffset; i < numPos + posOffset; i++) {
-		double result = scores[i];
-		// read FEN + score in pos
-		ParseFen(fenBuf[i], pos);
-		// evaluate the position
-		int score = EvalPositionTunable(pos, params);
-		double sigmoid = 1 / (1 + pow(10, ((-K * score) / 400)));
-		// this is incorrect for the stockfish augmented dataset so commented out
-		double tanhResult = 2 * result - 1;
-		//double tanhResult = result;
-		double tanh_eval = tanh((K * score) / 400);
-		// add to error (error is based on pseudo-huber loss, to reduce the power of outliers)
-		double residual = (isTanh) ? tanhResult - tanh_eval : result - sigmoid;
-		error += 0.25 * (sqrt(1 + (2 * pow(residual, 2))) - 1);
+	double total_error = 0.0;
+	
+	// Create a copy of the board for each thread to avoid race conditions
+	#pragma omp parallel reduction(+:total_error)
+	{
+		S_BOARD thread_pos[1];
+		memset(thread_pos, 0, sizeof(S_BOARD));
+		
+		#pragma omp for schedule(dynamic)
+		for (int i = posOffset; i < numPos + posOffset; i++) {
+			double result = scores[i];
+			// read FEN + score in thread-local position
+			ParseFen(fenBuf[i], thread_pos);
+			// evaluate the position
+			int score = EvalPositionTunable(thread_pos, params);
+			double sigmoid = 1 / (1 + pow(10, ((-K * score) / 400)));
+			// this is incorrect for the stockfish augmented dataset so commented out
+			double tanhResult = 2 * result - 1;
+			//double tanhResult = result;
+			double tanh_eval = tanh((K * score) / 400);
+			// add to error (error is based on pseudo-huber loss, to reduce the power of outliers)
+			double residual = (isTanh) ? tanhResult - tanh_eval : result - sigmoid;
+			double local_error = 0.25 * (sqrt(1 + (2 * pow(residual, 2))) - 1);
+			total_error += local_error;
+		}
 	}
-	return error / numPos;
+	return total_error / numPos;
 }
 
 int getRandomNumber(int step_size) {
@@ -644,12 +654,28 @@ static void printParamsToFile(S_EVAL_PARAMS *params, FILE *file) {
     fprintf(file, "\n");
 }
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_tanh) {
 	int adjust_val = 1;
 	double K = 1;
 	int useTanh = use_tanh;
 
+	// Set up OpenMP for multi-core processing
+	#ifdef _OPENMP
+	// Use all available cores
+	int num_cores = omp_get_num_procs();
+	omp_set_num_threads(num_cores);
+	printf("Using %d cores for tuning process\n", num_cores);
+	#endif
+
 	FILE *input = fopen(fileIn, "r");
+	if (input == NULL) {
+		printf("Error: Could not open input file %s\n", fileIn);
+		return;
+	}
 	int numPos = count_lines(input);
 
 	printf("Opened %s, with %d positions\n", fileIn, numPos);
@@ -658,9 +684,19 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 	initParams(params);
 
 	FILE* out = fopen(fileOut, "w+");
+	if (out == NULL) {
+		printf("Error: Could not open output file %s\n", fileOut);
+		fclose(input);
+		return;
+	}
 	fclose(out);
 
 	FILE* log = fopen(fileLog, "w+");
+	if (log == NULL) {
+		printf("Error: Could not open log file %s\n", fileLog);
+		fclose(input);
+		return;
+	}
 	fclose(log);
 
 	
