@@ -20,6 +20,9 @@
 #define DEFAULT_HASH_SIZE 256
 #define MIN_HASH_SIZE 4
 #define MAX_HASH_SIZE 65536  // 64 GB
+#define DEFAULT_THREADS 1
+#define MIN_THREADS 1
+#define MAX_THREADS 128
 
 // Full engine name with version
 #define FULL_ENGINE_NAME ENGINE_NAME " " ENGINE_VERSION

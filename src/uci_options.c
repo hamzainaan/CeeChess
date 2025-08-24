@@ -7,6 +7,7 @@
 // Forward declarations for option handlers
 void HashOptionChanged(int value);
 void ClearHashOptionPressed(int value);
+void ThreadsOptionChanged(int value);
 
 // UCI options array
 S_UCI_OPTION UciOptions[] = {
@@ -27,8 +28,16 @@ S_UCI_OPTION UciOptions[] = {
         0,
         0,
         ClearHashOptionPressed
+    },
+    {
+        "Threads",
+        UCI_OPTION_SPIN,
+        DEFAULT_THREADS,
+        MIN_THREADS,
+        MAX_THREADS,
+        DEFAULT_THREADS,
+        ThreadsOptionChanged
     }
-    // Add more options here
 };
 
 // Number of UCI options
@@ -113,4 +122,18 @@ void ClearHashOptionPressed(int value) {
         printf("info string hash table cleared.\n");
         ClearHashTable(HashTablePtr);
     }
+}
+
+// Global variable to store thread count
+int ThreadCount = DEFAULT_THREADS;
+
+// Handler for Threads option change
+void ThreadsOptionChanged(int value) {
+    ThreadCount = value;
+    printf("info string set threads to %d.\n", value);
+}
+
+// Getter for thread count
+int GetThreadCount() {
+    return ThreadCount;
 }

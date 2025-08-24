@@ -41,4 +41,7 @@ void PrintUciOptions();
 // Set the hash table pointer for option handlers
 void SetHashTablePtr(S_HASHTABLE *table);
 
+// Get the current thread count
+int GetThreadCount();
+
 #endif // UCI_OPTIONS_H

@@ -1,7 +1,10 @@
+#include <string.h>
+#include <pthread.h>
 #include "stdio.h"
 #include "defs.h"
 #include "config.h"
 #include "math.h"
+#include "uci_options.h"
 
 // Null Move Pruning Values
 static const int R = 2;
@@ -36,20 +39,54 @@ static const int ProbcutMargin = 100;
 static const int SingularExtensionDepth = 6;
 static const int SingularMargin = 50;
 
+// Global variables for thread management
+S_SEARCHINFO *ThreadInfo[MAX_THREADS];
+S_BOARD ThreadBoards[MAX_THREADS];
+pthread_mutex_t GlobalMutex;
+
 void InitSearch() {
 	// creating the LMR table entries (idea from Ethereal)
 	for (int moveDepth = 1; moveDepth < 64; moveDepth++)
   		for (int played = 1; played < 64; played++)
       		LMRTable[moveDepth][played] = 1 + (log(moveDepth) * log(played) / 1.75);
+	
+	// Initialize global mutex
+	pthread_mutex_init(&GlobalMutex, NULL);
+	
+	// Initialize thread info pointers to null
+	for (int i = 0; i < MAX_THREADS; i++) {
+		ThreadInfo[i] = NULL;
+	}
+}
+
+// Clean up thread resources
+void CleanupThreads() {
+	// Destroy global mutex
+	pthread_mutex_destroy(&GlobalMutex);
+	
+	// Free thread info structures and destroy their mutexes
+	for (int i = 0; i < MAX_THREADS; i++) {
+		if (ThreadInfo[i] != NULL) {
+			pthread_mutex_destroy(&ThreadInfo[i]->mutex);
+			free(ThreadInfo[i]);
+			ThreadInfo[i] = NULL;
+		}
+	}
 }
 
 static void CheckUp(S_SEARCHINFO *info) {
 	// .. check if time up, or interrupt from GUI
 	if(info->timeset == 1 && GetTimeMs() > info->stoptime) {
+		// Use mutex to safely update the stopped flag
+		pthread_mutex_lock(&info->mutex);
 		info->stopped = 1;
+		pthread_mutex_unlock(&info->mutex);
 	}
 
-	ReadInput(info);
+	// Only the main thread should read input
+	if (info->threadNum == 0) {
+		ReadInput(info);
+	}
 }
 
 static void PickNextMove(int moveNum, S_MOVELIST *list) {
@@ -105,17 +142,25 @@ static void ClearForSearch(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table)
 		}
 	}
 
-	table->overWrite=0;
-	table->hit=0;
-	table->cut=0;
-	pos->ply = 0;
-	table->currentage++;
+	// Only the main thread should reset these values
+	if (info->threadNum == 0) {
+		table->overWrite=0;
+		table->hit=0;
+		table->cut=0;
+		table->currentage++;
+	}
 
+	pos->ply = 0;
+
+	// Use mutex to safely update info fields
+	pthread_mutex_lock(&info->mutex);
 	info->stopped = 0;
 	info->nodes = 0;
 	info->fh = 0;
 	info->fhf = 0;
 	info->singularExt = 0;
+	info->searching = 0;
+	pthread_mutex_unlock(&info->mutex);
 }
 
 static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
@@ -126,7 +171,10 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 		CheckUp(info);
 	}
 
+	// Thread-safe node counter increment
+	pthread_mutex_lock(&info->mutex);
 	info->nodes++;
+	pthread_mutex_unlock(&info->mutex);
 
 	if(IsRepetition(pos) || pos->fiftyMove >= 100) {
 		return 0;
@@ -181,10 +229,13 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 
 		if(Score > alpha) {
 			if(Score >= beta) {
+				// Thread-safe counter updates
+				pthread_mutex_lock(&info->mutex);
 				if(Legal==1) {
 					info->fhf++;
 				}
 				info->fh++;
+				pthread_mutex_unlock(&info->mutex);
 				return beta;
 			}
 			alpha = Score;
@@ -261,7 +312,9 @@ static int IsSingular(int move, int depth, S_BOARD *pos, S_SEARCHINFO *info, S_H
 	}
 
 	// If all moves failed low by a significant margin, the move is singular
+	pthread_mutex_lock(&info->mutex);
 	info->singularExt++;
+	pthread_mutex_unlock(&info->mutex);
 	return 1;
 }
 
@@ -287,7 +340,10 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		CheckUp(info);
 	}
 
+	// Thread-safe node counter increment
+	pthread_mutex_lock(&info->mutex);
 	info->nodes++;
+	pthread_mutex_unlock(&info->mutex);
 
 	if((IsRepetition(pos) || pos->fiftyMove >= 100) && pos->ply) {
 		return 0;
@@ -383,7 +439,9 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		}
 
 		if (Score >= beta && abs(Score) < ISMATE) {
+			pthread_mutex_lock(&info->mutex);
 			info->nullCut++;
+			pthread_mutex_unlock(&info->mutex);
 			return beta;
 		}
 	}
@@ -488,10 +546,14 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		}
 		if(Score > alpha) {
 			if(Score >= beta) {
+				// Thread-safe counter updates
+				pthread_mutex_lock(&info->mutex);
 				if(Legal==1) {
 					info->fhf++;
 				}
 				info->fh++;
+				pthread_mutex_unlock(&info->mutex);
+				
 				if (nonCapture) {
 					if ((pos->searchKillers[0][pos->ply] != list->moves[MoveNum].move)) {
 						pos->searchKillers[1][pos->ply] = pos->searchKillers[0][pos->ply];
@@ -524,14 +586,105 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 	return alpha;
 }
 
+// Thread function for worker threads
+void *ThreadStart(void *threadArgs) {
+    S_SEARCHINFO *info = (S_SEARCHINFO *)threadArgs;
+    S_BOARD *pos = &ThreadBoards[info->threadNum];
+    S_HASHTABLE *table = HashTable;
+    int depth = info->depth;
+    
+    // Mark thread as searching
+    pthread_mutex_lock(&info->mutex);
+    info->searching = 1;
+    pthread_mutex_unlock(&info->mutex);
+    
+    // Start search at depth 1 and continue until stopped
+    for (int currentDepth = 1; currentDepth <= depth; currentDepth++) {
+        // Check if search should stop
+        int stopped;
+        pthread_mutex_lock(&info->mutex);
+        stopped = info->stopped;
+        pthread_mutex_unlock(&info->mutex);
+        
+        if (stopped) {
+            break;
+        }
+        
+        // Perform search with full window
+        AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, 1, 1, table);
+    }
+    
+    // Mark thread as no longer searching
+    pthread_mutex_lock(&info->mutex);
+    info->searching = 0;
+    pthread_mutex_unlock(&info->mutex);
+    
+    return NULL;
+}
+
+// Initialize a thread info structure
+void InitThreadInfo(S_SEARCHINFO *info, int threadNum, int depth, int timeset, int starttime, int stoptime, int movestogo) {
+    info->threadNum = threadNum;
+    info->depth = depth;
+    info->timeset = timeset;
+    info->starttime = starttime;
+    info->stoptime = stoptime;
+    info->movestogo = movestogo;
+    info->stopped = 0;
+    info->quit = 0;
+    info->nodes = 0;
+    info->fh = 0;
+    info->fhf = 0;
+    info->nullCut = 0;
+    info->singularExt = 0;
+    info->threadCount = GetThreadCount();
+    info->searching = 0;
+    
+    // Initialize mutex for this thread
+    pthread_mutex_init(&info->mutex, NULL);
+}
+
+// Copy a board position to another board
+void CopyBoard(S_BOARD *dest, S_BOARD *src) {
+    memcpy(dest, src, sizeof(S_BOARD));
+}
+
 void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
     int bestMove = 0;
     int bestScore = -INFINITE;
     int currentDepth = 0, pvMoves = 0, pvNum = 0;
-	U64 nps = 0;
-
+    U64 nps = 0;
+    int threadCount = GetThreadCount();
+    
+    // Initialize main thread info
+    info->threadNum = 0;
+    info->threadCount = threadCount;
+    pthread_mutex_init(&info->mutex, NULL);
+    
     ClearForSearch(pos, info, table);
-
+    
+    // If using multiple threads, create and start worker threads
+    if (threadCount > 1) {
+        // Allocate and initialize thread info structures
+        for (int i = 1; i < threadCount; i++) {
+            // Allocate thread info if not already allocated
+            if (ThreadInfo[i] == NULL) {
+                ThreadInfo[i] = (S_SEARCHINFO *)malloc(sizeof(S_SEARCHINFO));
+            }
+            
+            // Initialize thread info
+            InitThreadInfo(ThreadInfo[i], i, info->depth, info->timeset, 
+                          info->starttime, info->stoptime, info->movestogo);
+            
+            // Copy the board position to the thread's board
+            CopyBoard(&ThreadBoards[i], pos);
+            
+            // Start the thread
+            pthread_create(&ThreadInfo[i]->threadHandle, NULL, ThreadStart, ThreadInfo[i]);
+        }
+    }
+    
+    // Main thread search loop
     for(currentDepth = 1; currentDepth <= info->depth; ++currentDepth) {
         // Use Aspiration Windows for deeper searches
         if (currentDepth >= AspirationDepth) {
@@ -549,7 +702,11 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
                 }
                 
                 // If search was stopped, exit
-                if (info->stopped == 1) {
+                pthread_mutex_lock(&info->mutex);
+                int stopped = info->stopped;
+                pthread_mutex_unlock(&info->mutex);
+                
+                if (stopped) {
                     break;
                 }
                 
@@ -576,7 +733,11 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, 1, 1, table);
         }
         
-        if(info->stopped == 1) {
+        pthread_mutex_lock(&info->mutex);
+        int stopped = info->stopped;
+        pthread_mutex_unlock(&info->mutex);
+        
+        if(stopped) {
             break;
         }
 
@@ -585,18 +746,30 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
 
         int time = GetTimeMs() - info->starttime;
         
-        // calculate nps if time is greater than zero
+        // Calculate total nodes across all threads
+        long totalNodes = info->nodes;
+        if (threadCount > 1) {
+            pthread_mutex_lock(&GlobalMutex);
+            for (int i = 1; i < threadCount; i++) {
+                if (ThreadInfo[i] != NULL) {
+                    pthread_mutex_lock(&ThreadInfo[i]->mutex);
+                    totalNodes += ThreadInfo[i]->nodes;
+                    pthread_mutex_unlock(&ThreadInfo[i]->mutex);
+                }
+            }
+            pthread_mutex_unlock(&GlobalMutex);
+        }
+        
+        // Calculate nodes per second
         if (time > 0) {
-            // calculate nodes per second: (nodes * 1000) / time in milliseconds
-            // using unsigned long long to prevent overflow
-            nps = ((U64)info->nodes * 1000ULL) / (U64)time;
+            nps = ((U64)totalNodes * 1000ULL) / (U64)time;
         }
         
         if(abs(bestScore) > ISMATE) {
             bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-            printf("info score mate %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
+            printf("info score mate %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, totalNodes, nps, time);
         } else {
-            printf("info score cp %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
+            printf("info score cp %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, totalNodes, nps, time);
         }
 
         printf("pv");
@@ -604,6 +777,42 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             printf(" %s", PrMove(pos->PvArray[pvNum]));
         }
         printf("\n");
+    }
+    
+    // Stop all worker threads
+    if (threadCount > 1) {
+        // Set stopped flag for all threads
+        pthread_mutex_lock(&info->mutex);
+        info->stopped = 1;
+        pthread_mutex_unlock(&info->mutex);
+        
+        // Wait for all threads to finish
+        for (int i = 1; i < threadCount; i++) {
+            if (ThreadInfo[i] != NULL) {
+                pthread_mutex_lock(&ThreadInfo[i]->mutex);
+                ThreadInfo[i]->stopped = 1;
+                pthread_mutex_unlock(&ThreadInfo[i]->mutex);
+                
+                // Wait for thread to finish if it's still searching
+                int searching;
+                do {
+                    pthread_mutex_lock(&ThreadInfo[i]->mutex);
+                    searching = ThreadInfo[i]->searching;
+                    pthread_mutex_unlock(&ThreadInfo[i]->mutex);
+                    
+                    if (searching) {
+                        // Small sleep to avoid busy waiting
+                        struct timespec ts;
+                        ts.tv_sec = 0;
+                        ts.tv_nsec = 1000000; // 1ms
+                        nanosleep(&ts, NULL);
+                    }
+                } while (searching);
+                
+                // Join the thread
+                pthread_join(ThreadInfo[i]->threadHandle, NULL);
+            }
+        }
     }
     
     printf("bestmove %s\n", PrMove(bestMove));

@@ -5,6 +5,8 @@
 #include "stdio.h"
 #include "config.h"
 
+#include <pthread.h>
+
 // #define DEBUG
 
 #ifndef DEBUG
@@ -120,6 +122,11 @@ typedef struct {
 	float fhf;
 	int nullCut;
 	int singularExt;
+	int threadCount;
+	int threadNum; // 0 = main thread, 1+ = worker threads
+	pthread_t threadHandle;
+	pthread_mutex_t mutex;
+	int searching;
 } S_SEARCHINFO;
 
 #define FROMSQ(m) ((m) & 0x7F)
@@ -217,6 +224,7 @@ extern void 		MakeNullMove(S_BOARD *pos);
 extern void 		TakeNullMove(S_BOARD *pos);
 extern void 		SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table);
 extern void 		InitSearch();
+extern void 		CleanupThreads();
 extern int 			GetTimeMs();
 extern void 		ReadInput(S_SEARCHINFO *info);
 extern void 		InitHashTable(S_HASHTABLE *table, const int MB);

@@ -13,6 +13,9 @@ int main() {
     info->quit = 0;
 	HashTable->pTable = NULL;
     InitHashTable(HashTable, DEFAULT_HASH_SIZE);
+	
+	pthread_mutex_init(&info->mutex, NULL);
+	
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
@@ -33,6 +36,8 @@ int main() {
 		}
 	}
 
+	CleanupThreads();
+	pthread_mutex_destroy(&info->mutex);
 	free(HashTable->pTable);
 	return 0;
 }
