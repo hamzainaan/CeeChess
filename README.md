@@ -1,6 +1,56 @@
 # CeeChess
-Hi! I am a bot written in C, heavily inspired by the Vice engine and video series done by Bluefever! If you want to try your hand at facing me, I am occasionally on lichess at https://lichess.org/@/seeChessBot! Play me here on fly.io: https://cee-chess.fly.dev/
+Hi! I am a bot written in C, heavily inspired by the Vice engine and video series done by Bluefever! If you want to try your hand at facing me, I am occasionally on;
 
+- https://lichess.org/@/seeChessBot
+
+- https://cee-chess.fly.dev/
+
+## Build
+
+CeeChess can be built on Windows, Linux, and Android platforms.
+
+### Prerequisites
+- GCC or compatible C compiler
+- Make
+
+### Building from Source
+
+```bash
+# Navigate to the CeeChess directory
+cd CeeChess
+
+# Build for your current platform
+make
+
+# Or specify a target platform
+make TARGET_OS=windows  # For Windows
+make TARGET_OS=linux    # For Linux
+make TARGET_OS=android  # For Android
+```
+
+### Customizing the Build
+
+You can customize the build by overriding variables:
+
+```bash
+# Customize name and version
+make NAME=cee VERSION=2.0
+
+# Cross-compile for Windows on Linux
+make TARGET_OS=windows CC=x86_64-w64-mingw32-gcc
+
+# For Android
+make TARGET_OS=android CC=/path/to/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang
+```
+
+### Cleaning
+```bash
+make clean
+```
+
+For more build options, run `make help`.
+
+## Rating
 **Rating:**
 The rating for the latest release of the engine (v1.4), scores ~150 elo better in self-play to v1.3.2, and should play at ~2300 CCRL (since self-play typically inflates ratings). This compares roughly to FIDE 2500, although there is no real 1-1 correspondence between these rating systems.
 
@@ -38,56 +88,5 @@ Time Control: (1 min, 0.5sec inc), with elo centered around the v1.4 release (ra
    
 Since CCRL ratings got adjusted down recently (stockfish went from 3900 CCRL to ~3630 afaik), this no longer breaks the CCRL 2400 barrier, but comparing the results here to the old ratings of Barbarossa-0.6.0(2468), Barbarossa-0.5.0(~2375ish i believe?) and the others suggests that this release would have broken that barrier. I now expect the engine to land in the range of 2300-2350, given Barbarossa-0.6.0 has a new rating of 2355
 
-**Next Steps:**
-After the v1.4 release, I will likely either:   
-1. convert the evaluation function into a custom MLP to mess around with more of the constructed datasets I have on the backend with a likely better evaluation.   
-2. rewrite the engine from the ground to use bitboards (likely magic bitboard move generation), as bitboards come with a variety of perks when creating more evaluation features like mobility and more robust king safety that are computationally hard to replicate in a mailbox engine without having bitboards on hand, making the evaulation unreasonably slow.
-
-# Engine Features
-
-**Search:**
-The Engine searches with a Principal Variation Search inside a Negamax framework
-
-**Lossless Pruning:**
-- Alpha-Beta pruning
-- Mate Distance pruning
-
-**Lossy Pruning:**
-- Transposition Table
-- Razoring
-- Null Move Pruning
-- Late Move Reductions
-- Futility Pruning
-- Static Null Move Pruning (Reverse Futility Pruning)
-
-**Move Ordering:**
-- PV Move
-- Captures ordered by MVV/LVA (Most Valuable Victim/Least Valuable Attacker)
-- 2 Killer Moves
-- Quiet moves ordered by history heuristic
-
-**Evaluation:**
-- Material
-- PSQT (Midgame and Endgame, from Lyudmil)
-- Bishop pair heuristic (for Midgame and Endgame)
-- Passed Pawn evaluation (Midgame and Endgame tables)
-- Isolated pawn heuristic
-- Open file heuristics (for Rook and Queen)
-- King Safety (King Tropism, weighted by the number pieces left on the board + attack bonuses for semi-open files near the king)
-- Tapered evaluation
-- Logistic Regression Tuning (Texel method) using Simulated Annealing + Local Search, with Pseudohuber loss
-
-**Planned Improvements (ordered by perceived feasibility):**
-- Syzygy Tablebases
-- SEE (Static Exchange Evaluation) (bitboards would be nice for this, but maybe feasible to do quickly in mailbox)
-- Mobility (tried, too slow, would like bitboards for this)
-
-**Other Possible Improvements (No particular order):**
-- IID (Internal Iterative Deepening)
-- Countermove Tables
-- Singular Extensions
-- Probcut
-- Bitboards
-- Aspiration Windows
-
-None of the code I write is copyrighted or protected in any way, and you may make use of all that you wish. You do not have to credit me if you use any of the code I write, but it would be great if you did
+## Disclaimer
+None of the code I write is copyrighted or protected in any way, and you may make use of all that you wish. You do not have to credit me if you use any of the code I write, but it would be great if you did!

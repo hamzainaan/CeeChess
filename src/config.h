@@ -19,7 +19,7 @@
 // UCI options
 #define DEFAULT_HASH_SIZE 256
 #define MIN_HASH_SIZE 4
-#define MAX_HASH_SIZE 1024
+#define MAX_HASH_SIZE 65536  // 64 GB
 
 // Full engine name with version
 #define FULL_ENGINE_NAME ENGINE_NAME " " ENGINE_VERSION

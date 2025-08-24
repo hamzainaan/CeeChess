@@ -594,9 +594,9 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         
         if(abs(bestScore) > ISMATE) {
             bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-            printf("info score mate %d depth %d nodes %ld nps %lld time %d singularext %d ", bestScore, currentDepth, info->nodes, nps, time, info->singularExt);
+            printf("info score mate %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
         } else {
-            printf("info score cp %d depth %d nodes %ld nps %lld time %d singularext %d ", bestScore, currentDepth, info->nodes, nps, time, info->singularExt);
+            printf("info score cp %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, info->nodes, nps, time);
         }
 
         printf("pv");

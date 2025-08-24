@@ -2,6 +2,13 @@
 #include "defs.h"
 #include "config.h"
 
+#ifdef _MSC_VER
+#include <xmmintrin.h> // _mm_prefetch
+#include <malloc.h>    // _aligned_malloc
+#else
+#include <stdlib.h>    // aligned_alloc
+#endif
+
 S_HASHTABLE HashTable[1];
 
 int GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table) {
@@ -50,15 +57,40 @@ void ClearHashTable(S_HASHTABLE *table) {
 
 void InitHashTable(S_HASHTABLE *table, const int MB) {  
 	
-	int HashSize = 0x100000 * MB;
-    table->numEntries = HashSize / sizeof(S_HASHENTRY);
-    table->numEntries -= 2;
+	size_t HashSize = (size_t)0x100000 * (size_t)MB;
+    size_t rawEntries = HashSize / sizeof(S_HASHENTRY);
+    
+    // Round down to the nearest power of 2
+    size_t powerOf2 = 1;
+    while (powerOf2 * 2 <= rawEntries)
+        powerOf2 *= 2;
+    
+    // Align with cache line size (typically 64 bytes)
+    const size_t CACHE_LINE_SIZE = 64;
+    size_t entrySize = sizeof(S_HASHENTRY);
+    size_t entriesPerCacheLine = CACHE_LINE_SIZE / entrySize;
+    
+    if (entriesPerCacheLine > 1) {
+        // Make hash table size a multiple of cache line size
+        powerOf2 = (powerOf2 / entriesPerCacheLine) * entriesPerCacheLine;
+    }
+        
+    table->numEntries = powerOf2;
 	
 	if(table->pTable!=NULL) {
-		free(table->pTable);
+		#ifdef _MSC_VER
+		_aligned_free(table->pTable);
+		#else
+		free(table->pTable); // memory allocated with aligned_alloc can be freed with normal free
+		#endif
 	}
 		
-    table->pTable = (S_HASHENTRY *) malloc(table->numEntries * sizeof(S_HASHENTRY));
+	#ifdef _MSC_VER
+    table->pTable = (S_HASHENTRY *) _aligned_malloc(table->numEntries * sizeof(S_HASHENTRY), 64);
+	#else
+	// aligned_alloc may not be supported in MinGW, using standard malloc
+	table->pTable = (S_HASHENTRY *) malloc(table->numEntries * sizeof(S_HASHENTRY));
+	#endif
 	if(table->pTable == NULL) {
 		if(MB/2 >= MIN_HASH_SIZE) {
 			InitHashTable(table, MB/2);
@@ -74,7 +106,16 @@ void InitHashTable(S_HASHTABLE *table, const int MB) {
 
 int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int alpha, int beta, int depth) {
 
-	int index = pos->posKey % table->numEntries;
+	size_t index = pos->posKey & (table->numEntries - 1); // Bit masking instead of modulo
+	
+	// Prefetch hash entry
+	#ifdef _MSC_VER
+	_mm_prefetch((const char*)&table->pTable[index], _MM_HINT_T0);
+	#elif defined(__GNUC__)
+	__builtin_prefetch(&table->pTable[index]);
+	#endif
+	
+	S_HASHENTRY *pentry = &table->pTable[index];
 	
 	ASSERT(index >= 0 && index <= table->numEntries - 1);
     ASSERT(depth>=1&&depth<MAXDEPTH);
@@ -83,20 +124,20 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
     ASSERT(beta>=-INFINITE&&beta<=INFINITE);
     ASSERT(pos->ply>=0&&pos->ply<MAXDEPTH);
 	
-	if( table->pTable[index].posKey == pos->posKey ) {
-		*move = table->pTable[index].move;
+	if(pentry->posKey == pos->posKey) {
+		*move = pentry->move;
 		// if hash depth > depth move score is usable
-		if(table->pTable[index].depth >= depth){
+		if(pentry->depth >= depth){
 			table->hit++;
 			
-			ASSERT(table->pTable[index].depth>=1&&table->pTable[index].depth<MAXDEPTH);
-            ASSERT(table->pTable[index].flags>=1&&table->pTable[index].flags<=3);
+			ASSERT(pentry->depth>=1&&pentry->depth<MAXDEPTH);
+            ASSERT(pentry->flags>=1&&pentry->flags<=3);
 			
-			*score = table->pTable[index].score;
+			*score = pentry->score;
 			if(*score > ISMATE) *score -= pos->ply;
             else if(*score < -ISMATE) *score += pos->ply;
 			
-			switch(table->pTable[index].flags) {
+			switch(pentry->flags) {
 				
                 ASSERT(*score>=-INFINITE&&*score<=INFINITE);
 
@@ -124,7 +165,16 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
 
 void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score, const int flags, const int depth) {
 
-	int index = pos->posKey % table->numEntries;
+	size_t index = pos->posKey & (table->numEntries - 1); // Bit masking instead of modulo
+	
+	// Prefetch hash entry
+	#ifdef _MSC_VER
+	_mm_prefetch((const char*)&table->pTable[index], _MM_HINT_T0);
+	#elif defined(__GNUC__)
+	__builtin_prefetch(&table->pTable[index]);
+	#endif
+	
+	S_HASHENTRY *pentry = &table->pTable[index];
 	
 	ASSERT(index >= 0 && index <= table->numEntries - 1);
 	ASSERT(depth>=1&&depth<MAXDEPTH);
@@ -133,10 +183,10 @@ void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score,
     ASSERT(pos->ply>=0&&pos->ply<MAXDEPTH);
 
 	
-	if( table->pTable[index].posKey == 0) {
+	if(pentry->posKey == 0) {
 		table->newWrite++;
 	} else {
-		if (!(table->pTable[index].age < table->currentage || table->pTable[index].depth < depth))
+		if (!(pentry->age < table->currentage || pentry->depth < depth))
 			return;
 		table->overWrite++;
 	}
@@ -144,21 +194,30 @@ void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score,
 	if(score > ISMATE) score += pos->ply;
     else if(score < -ISMATE) score -= pos->ply;
 	
-	table->pTable[index].move = move;
-    table->pTable[index].posKey = pos->posKey;
-	table->pTable[index].flags = flags;
-	table->pTable[index].score = score;
-	table->pTable[index].depth = depth;
-	table->pTable[index].age = table->currentage;
+	pentry->move = move;
+    pentry->posKey = pos->posKey;
+	pentry->flags = flags;
+	pentry->score = score;
+	pentry->depth = depth;
+	pentry->age = table->currentage;
 }
 
 int ProbePvMove(const S_BOARD *pos, S_HASHTABLE *table) {
 
-	int index = pos->posKey % table->numEntries;
+	size_t index = pos->posKey & (table->numEntries - 1); // Bit masking instead of modulo
+	
+	// Prefetch hash entry
+	#ifdef _MSC_VER
+	_mm_prefetch((const char*)&table->pTable[index], _MM_HINT_T0);
+	#elif defined(__GNUC__)
+	__builtin_prefetch(&table->pTable[index]);
+	#endif
+	
+	S_HASHENTRY *pentry = &table->pTable[index];
 	ASSERT(index >= 0 && index <= table->numEntries - 1);
 	
-	if( table->pTable[index].posKey == pos->posKey ) {
-		return table->pTable[index].move;
+	if(pentry->posKey == pos->posKey) {
+		return pentry->move;
 	}
 	
 	return 0;

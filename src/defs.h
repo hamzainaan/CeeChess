@@ -49,6 +49,9 @@ typedef struct {
 	int count;
 } S_MOVELIST;
 
+#ifdef _MSC_VER
+__declspec(align(64))
+#endif
 typedef struct {
 	U64 posKey;
 	int move;
@@ -56,11 +59,16 @@ typedef struct {
 	int depth;
 	int flags;
 	int age;
-} S_HASHENTRY;
+	int padding[10];
+}
+#ifdef __GNUC__
+__attribute__((aligned(64)))
+#endif
+S_HASHENTRY;
 
 typedef struct {
 	S_HASHENTRY *pTable;
-	int numEntries;
+	size_t numEntries;
 	int newWrite;
 	int overWrite;
 	int hit;
