@@ -12,6 +12,14 @@ typedef enum {
     UCI_OPTION_STRING
 } UCI_OPTION_TYPE;
 
+// Style options for time management
+typedef enum {
+    STYLE_NORMAL,
+    STYLE_AGGRESSIVE,
+    STYLE_SOLID,
+    STYLE_COUNT
+} PLAY_STYLE;
+
 // UCI option structure
 typedef struct {
     char name[64];
@@ -43,5 +51,11 @@ void SetHashTablePtr(S_HASHTABLE *table);
 
 // Get the current thread count
 int GetThreadCount();
+
+// Get the current play style
+PLAY_STYLE GetPlayStyle();
+
+// Get style name as string
+const char* GetStyleName(PLAY_STYLE style);
 
 #endif // UCI_OPTIONS_H

@@ -1,6 +1,9 @@
 #ifndef EVAL_H
 #define EVAL_H
 
+void InitEval();
+int EvalPosition(S_BOARD *pos);
+
 // Game phase constants
 const int minorPhase = 1;
 const int rookPhase = 2;

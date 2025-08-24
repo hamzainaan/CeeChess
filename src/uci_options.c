@@ -8,6 +8,17 @@
 void HashOptionChanged(int value);
 void ClearHashOptionPressed(int value);
 void ThreadsOptionChanged(int value);
+void StyleOptionChanged(int value);
+
+// Global variable to store play style
+PLAY_STYLE CurrentPlayStyle = STYLE_NORMAL;
+
+// Style names
+const char* StyleNames[STYLE_COUNT] = {
+    "Normal",
+    "Aggressive",
+    "Solid"
+};
 
 // UCI options array
 S_UCI_OPTION UciOptions[] = {
@@ -37,6 +48,15 @@ S_UCI_OPTION UciOptions[] = {
         MAX_THREADS,
         DEFAULT_THREADS,
         ThreadsOptionChanged
+    },
+    {
+        "Style",
+        UCI_OPTION_COMBO,
+        STYLE_NORMAL,
+        0,
+        STYLE_COUNT - 1,
+        STYLE_NORMAL,
+        StyleOptionChanged
     }
 };
 
@@ -62,7 +82,21 @@ void InitUciOptions() {
 void ProcessUciOption(char* name, char* value) {
     for (int i = 0; i < UciOptionsCount; i++) {
         if (strcmp(UciOptions[i].name, name) == 0) {
-            int intValue = atoi(value);
+            int intValue = 0;
+            
+            // Handle combo box for Style option
+            if (UciOptions[i].type == UCI_OPTION_COMBO && strcmp(name, "Style") == 0) {
+                // Convert style name to enum value
+                for (int j = 0; j < STYLE_COUNT; j++) {
+                    if (strcmp(value, StyleNames[j]) == 0) {
+                        intValue = j;
+                        break;
+                    }
+                }
+            } else {
+                // For other options, convert to integer
+                intValue = atoi(value);
+            }
             
             // Validate value based on option type
             if (UciOptions[i].type == UCI_OPTION_SPIN) {
@@ -101,6 +135,16 @@ void PrintUciOptions() {
             case UCI_OPTION_BUTTON:
                 printf("option name %s type button\n", UciOptions[i].name);
                 break;
+            case UCI_OPTION_COMBO:
+                if (strcmp(UciOptions[i].name, "Style") == 0) {
+                    printf("option name %s type combo default %s var %s var %s var %s\n",
+                           UciOptions[i].name,
+                           StyleNames[STYLE_NORMAL],
+                           StyleNames[STYLE_NORMAL],
+                           StyleNames[STYLE_AGGRESSIVE],
+                           StyleNames[STYLE_SOLID]);
+                }
+                break;
             // Add cases for other option types
             default:
                 break;
@@ -136,4 +180,25 @@ void ThreadsOptionChanged(int value) {
 // Getter for thread count
 int GetThreadCount() {
     return ThreadCount;
+}
+
+// Handler for Style option change
+void StyleOptionChanged(int value) {
+    if (value >= 0 && value < STYLE_COUNT) {
+        CurrentPlayStyle = (PLAY_STYLE)value;
+        printf("info string set style to %s.\n", StyleNames[CurrentPlayStyle]);
+    }
+}
+
+// Getter for play style
+PLAY_STYLE GetPlayStyle() {
+    return CurrentPlayStyle;
+}
+
+// Get style name as string
+const char* GetStyleName(PLAY_STYLE style) {
+    if (style >= 0 && style < STYLE_COUNT) {
+        return StyleNames[style];
+    }
+    return "Unknown";
 }

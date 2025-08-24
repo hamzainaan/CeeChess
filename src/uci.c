@@ -11,6 +11,9 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 	int depth = -1, movestogo = 30, movetime = -1, time = -1, inc = 0;
     char *ptr = NULL;
 	info->timeset = 0;
+	
+	// Variables for opponent's time
+	int opptime = -1;
 
 	if ((ptr = strstr(line,"infinite"))) {
 		;
@@ -24,12 +27,20 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 		inc = atoi(ptr + 5);
 	}
 
-	if ((ptr = strstr(line,"wtime")) && pos->side == WHITE) {
-		time = atoi(ptr + 6);
+	if ((ptr = strstr(line,"wtime"))) {
+		if (pos->side == WHITE) {
+			time = atoi(ptr + 6);
+		} else {
+			opptime = atoi(ptr + 6);
+		}
 	}
 
-	if ((ptr = strstr(line,"btime")) && pos->side == BLACK) {
-		time = atoi(ptr + 6);
+	if ((ptr = strstr(line,"btime"))) {
+		if (pos->side == BLACK) {
+			time = atoi(ptr + 6);
+		} else {
+			opptime = atoi(ptr + 6);
+		}
 	}
 
 	if ((ptr = strstr(line,"movestogo"))) {
@@ -54,9 +65,62 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 
 	if(time != -1) {
 		info->timeset = 1;
-		time /= movestogo;
-		time -= 50;
-		info->stoptime = info->starttime + time + inc;
+		
+		// Get current play style
+		PLAY_STYLE style = GetPlayStyle();
+		
+		// Calculate base time allocation
+		int timeAllocation = time / movestogo;
+		
+		// Adjust time based on style and position evaluation
+		int eval = EvalPosition(pos);
+		int positionAdvantage = (pos->side == WHITE) ? eval : -eval;
+		
+		// Time adjustment factor
+		float timeFactor = 1.0f;
+		
+		switch (style) {
+			case STYLE_AGGRESSIVE:
+				// In aggressive mode:
+				// - If opponent has less time and our position is not bad, play faster
+				// - If we have less time and our position is good, play slower
+				if (opptime != -1 && opptime < time && positionAdvantage >= -50) {
+					// Opponent has less time and our position is not bad, play faster
+					timeFactor = 0.7f;
+				} else if (opptime != -1 && time < opptime && positionAdvantage > 50) {
+					// We have less time but our position is good, play slower
+					timeFactor = 1.3f;
+				}
+				break;
+				
+			case STYLE_SOLID:
+				// In solid mode, always play calmly with consistent time usage
+				timeFactor = 1.1f;
+				break;
+				
+			case STYLE_NORMAL:
+				// In normal mode, adjust time dynamically based on position
+				if (positionAdvantage > 100) {
+					// We have a clear advantage, play faster
+					timeFactor = 0.8f;
+				} else if (positionAdvantage < -100) {
+					// We are at a disadvantage, think more
+					timeFactor = 1.2f;
+				}
+				break;
+				
+			default:
+				break;
+		}
+		
+		// Apply the time factor
+		timeAllocation = (int)(timeAllocation * timeFactor);
+		
+		// Safety margin
+		timeAllocation -= 50;
+		
+		// Set the stop time
+		info->stoptime = info->starttime + timeAllocation + inc;
 	}
 
 	if(depth == -1) {
