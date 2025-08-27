@@ -13,15 +13,10 @@ S_HASHTABLE HashTable[1];
 
 int GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table) {
 
-	ASSERT(depth < MAXDEPTH && depth >= 1);
-
 	int move = ProbePvMove(pos, table);
 	int count = 0;
 	
 	while(move != 0 && count < depth) {
-	
-		ASSERT(count < MAXDEPTH);
-	
 		if( MoveExists(pos, move) ) {
 			MakeMove(pos, move);
 			pos->PvArray[count++] = move;
@@ -34,9 +29,7 @@ int GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table) {
 	while(pos->ply > 0) {
 		TakeMove(pos);
 	}
-	
 	return count;
-	
 }
 
 void ClearHashTable(S_HASHTABLE *table) {
@@ -117,30 +110,17 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
 	
 	S_HASHENTRY *pentry = &table->pTable[index];
 	
-	ASSERT(index >= 0 && index <= table->numEntries - 1);
-    ASSERT(depth>=1&&depth<MAXDEPTH);
-    ASSERT(alpha<beta);
-    ASSERT(alpha>=-INFINITE&&alpha<=INFINITE);
-    ASSERT(beta>=-INFINITE&&beta<=INFINITE);
-    ASSERT(pos->ply>=0&&pos->ply<MAXDEPTH);
-	
 	if(pentry->posKey == pos->posKey) {
 		*move = pentry->move;
 		// if hash depth > depth move score is usable
 		if(pentry->depth >= depth){
 			table->hit++;
-			
-			ASSERT(pentry->depth>=1&&pentry->depth<MAXDEPTH);
-            ASSERT(pentry->flags>=1&&pentry->flags<=3);
-			
 			*score = pentry->score;
+
 			if(*score > ISMATE) *score -= pos->ply;
             else if(*score < -ISMATE) *score += pos->ply;
 			
 			switch(pentry->flags) {
-				
-                ASSERT(*score>=-INFINITE&&*score<=INFINITE);
-
                 case 1: if(*score<=alpha) {
                     *score=alpha;
                     return 1;
@@ -154,7 +134,7 @@ int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int 
                 case 3:
                     return 1;
                     break;
-                default: ASSERT(0); break;
+                default: break;
             }
 		}
 		// otherwise move order is usable
@@ -175,14 +155,7 @@ void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score,
 	#endif
 	
 	S_HASHENTRY *pentry = &table->pTable[index];
-	
-	ASSERT(index >= 0 && index <= table->numEntries - 1);
-	ASSERT(depth>=1&&depth<MAXDEPTH);
-    ASSERT(flags>=1&&flags<=3);
-    ASSERT(score>=-INFINITE&&score<=INFINITE);
-    ASSERT(pos->ply>=0&&pos->ply<MAXDEPTH);
 
-	
 	if(pentry->posKey == 0) {
 		table->newWrite++;
 	} else {
@@ -214,7 +187,6 @@ int ProbePvMove(const S_BOARD *pos, S_HASHTABLE *table) {
 	#endif
 	
 	S_HASHENTRY *pentry = &table->pTable[index];
-	ASSERT(index >= 0 && index <= table->numEntries - 1);
 	
 	if(pentry->posKey == pos->posKey) {
 		return pentry->move;

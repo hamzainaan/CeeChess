@@ -8,12 +8,9 @@
 
 void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 
-	int depth = -1, movestogo = 30, movetime = -1, time = -1, inc = 0;
+	int depth = -1, movestogo = 30, movetime = -1, time = -1, opptime = -1, inc = 0;
     char *ptr = NULL;
 	info->timeset = 0;
-	
-	// Variables for opponent's time
-	int opptime = -1;
 
 	if ((ptr = strstr(line,"infinite"))) {
 		;
@@ -213,8 +210,11 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             printf("id author %s\n",ENGINE_AUTHOR);
             PrintUciOptions();
             printf("uciok\n");
-        } else if (!strncmp(line, "debug", 4)) {
+        } else if (!strncmp(line, "debug", 5)) {
             DebugAnalysisTest(pos, info, table);
+            break;
+        } else if (!strncmp(line, "board", 5)) {
+            PrintBoard(pos);
             break;
         } else if (!strncmp(line, "tune", 4)) {
             // Parse tune command

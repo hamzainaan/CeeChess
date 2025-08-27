@@ -103,10 +103,6 @@ static void PickNextMove(int moveNum, S_MOVELIST *list) {
 		}
 	}
 
-	ASSERT(moveNum>=0 && moveNum<list->count);
-	ASSERT(bestNum>=0 && bestNum<list->count);
-	ASSERT(bestNum>=moveNum);
-
 	temp = list->moves[moveNum];
 	list->moves[moveNum] = list->moves[bestNum];
 	list->moves[bestNum] = temp;
@@ -117,7 +113,6 @@ static int IsRepetition(const S_BOARD *pos) {
 	int index = 0;
 
 	for(index = pos->hisPly - pos->fiftyMove; index < pos->hisPly-1; ++index) {
-		ASSERT(index >= 0 && index < MAXGAMEMOVES);
 		if(pos->posKey == pos->history[index].posKey) {
 			return 1;
 		}
@@ -165,8 +160,6 @@ static void ClearForSearch(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table)
 
 static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 
-	ASSERT(CheckBoard(pos));
-	ASSERT(beta>alpha);
 	if(( info->nodes & 2047 ) == 0) {
 		CheckUp(info);
 	}
@@ -192,8 +185,6 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 	}
 
 	int Score = EvalPosition(pos);
-
-	ASSERT(Score>-INFINITE && Score<INFINITE);
 
 	if(Score >= beta) {
 		return beta;
@@ -241,9 +232,6 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 			alpha = Score;
 		}
     }
-
-	ASSERT(alpha >= OldAlpha);
-
 	return alpha;
 }
 
@@ -319,10 +307,6 @@ static int IsSingular(int move, int depth, S_BOARD *pos, S_SEARCHINFO *info, S_H
 }
 
 static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO *info, int DoNull, int DoLMR, S_HASHTABLE *table) {
-
-	ASSERT(CheckBoard(pos));
-	ASSERT(beta>alpha);
-	ASSERT(depth>=0);
 
 	int InCheck = SqAttacked(pos->KingSq[pos->side],pos->side^1,pos);
 
@@ -574,8 +558,6 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 	if(Legal == 0) {
 		return InCheck * (-INFINITE + pos->ply);
 	}
-
-	ASSERT(alpha>=OldAlpha);
 
 	if(alpha != OldAlpha) {
 		StoreHashEntry(pos, table, BestMove, BestScore, 3, depth);

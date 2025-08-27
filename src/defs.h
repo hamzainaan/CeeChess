@@ -7,21 +7,6 @@
 
 #include <pthread.h>
 
-// #define DEBUG
-
-#ifndef DEBUG
-#define ASSERT(n)
-#else
-#define ASSERT(n) \
-if(!(n)) { \
-printf("%s - Failed",#n); \
-printf("On %s ",__DATE__); \
-printf("At %s ",__TIME__); \
-printf("In File %s ",__FILE__); \
-printf("At Line %d\n",__LINE__); \
-exit(1);}
-#endif
-
 typedef unsigned long long U64;
 
 enum { EMPTY, WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING, BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING };
@@ -138,8 +123,6 @@ typedef struct {
 #define FR2SQ(f,r) ( (21 + (f) ) + ( (r) * 10 ) )
 #define SQ64(sq120) (Sq120ToSq64[(sq120)])
 #define SQ120(sq64) (Sq64ToSq120[(sq64)])
-#define POP(b) PopBit(b)
-#define CNT(b) CountBits(b)
 #define CLRBIT(bb,sq) ((bb) &= ClearMask[(sq)])
 #define SETBIT(bb,sq) ((bb) |= SetMask[(sq)])
 #define IsBQ(p) (PieceBishopQueen[(p)])
@@ -189,7 +172,6 @@ extern S_HASHTABLE 	HashTable[1];
 extern int 			DistTable[64][64];
 
 extern void 		AllInit();
-extern void 		PrintBitBoard(U64 bb);
 extern int 			PopBit(U64 *bb);
 extern int 			CountBits(U64 b);
 extern U64 			GeneratePosKey(const S_BOARD *pos);
@@ -197,8 +179,6 @@ extern void 		ResetBoard(S_BOARD *pos);
 extern int 			ParseFen(char *fen, S_BOARD *pos);
 extern void 		PrintBoard(const S_BOARD *pos);
 extern void 		UpdateListsMaterial(S_BOARD *pos);
-extern int 			CheckBoard(const S_BOARD *pos);
-extern void 		MirrorBoard(S_BOARD *pos);
 extern int 			SqAttacked(const int sq, const int side, const S_BOARD *pos);
 extern char 		*PrMove(const int move);
 extern char 		*PrSq(const int sq);

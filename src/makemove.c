@@ -24,18 +24,11 @@ const int CastlePerm[120] = {
 
 static void ClearPiece(const int sq, S_BOARD *pos) {
 
-	ASSERT(SqOnBoard(sq));
-	ASSERT(CheckBoard(pos));
-
     int pce = pos->pieces[sq];
-
-    ASSERT(PieceValid(pce));
 
 	int col = PieceCol[pce];
 	int index = 0;
 	int t_pceNum = -1;
-
-	ASSERT(SideValid(col));
 
     HASH_PCE(pce,sq);
 
@@ -62,26 +55,14 @@ static void ClearPiece(const int sq, S_BOARD *pos) {
 		}
 	}
 
-	ASSERT(t_pceNum != -1);
-	ASSERT(t_pceNum>=0&&t_pceNum<10);
-
 	pos->pceNum[pce]--;
-
 	pos->pList[pce][t_pceNum] = pos->pList[pce][pos->pceNum[pce]];
-
 }
 
 
 static void AddPiece(const int sq, S_BOARD *pos, const int pce) {
-
-    ASSERT(PieceValid(pce));
-    ASSERT(SqOnBoard(sq));
-
 	int col = PieceCol[pce];
-	ASSERT(SideValid(col));
-
     HASH_PCE(pce,sq);
-
 	pos->pieces[sq] = pce;
 
     if(PieceBig[pce]) {
@@ -99,23 +80,13 @@ static void AddPiece(const int sq, S_BOARD *pos, const int pce) {
 	pos->material[col] += PieceValMG[pce];
     pos->material[col + 2] += PieceValEG[pce];
 	pos->pList[pce][pos->pceNum[pce]++] = sq;
-
 }
 
 static void MovePiece(const int from, const int to, S_BOARD *pos) {
 
-    ASSERT(SqOnBoard(from));
-    ASSERT(SqOnBoard(to));
-
 	int index = 0;
 	int pce = pos->pieces[from];
 	int col = PieceCol[pce];
-	ASSERT(SideValid(col));
-    ASSERT(PieceValid(pce));
-
-#ifdef DEBUG
-	int t_PieceNum = 0;
-#endif
 
 	HASH_PCE(pce,from);
 	pos->pieces[from] = EMPTY;
@@ -133,29 +104,16 @@ static void MovePiece(const int from, const int to, S_BOARD *pos) {
 	for(index = 0; index < pos->pceNum[pce]; ++index) {
 		if(pos->pList[pce][index] == from) {
 			pos->pList[pce][index] = to;
-#ifdef DEBUG
-			t_PieceNum = 1;
-#endif
 			break;
 		}
 	}
-	ASSERT(t_PieceNum);
 }
 
 int MakeMove(S_BOARD *pos, int move) {
 
-	ASSERT(CheckBoard(pos));
-
 	int from = FROMSQ(move);
     int to = TOSQ(move);
     int side = pos->side;
-
-	ASSERT(SqOnBoard(from));
-    ASSERT(SqOnBoard(to));
-    ASSERT(SideValid(side));
-    ASSERT(PieceValid(pos->pieces[from]));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
 
 	pos->history[pos->hisPly].posKey = pos->posKey;
 
@@ -179,7 +137,7 @@ int MakeMove(S_BOARD *pos, int move) {
             case G8:
                 MovePiece(H8, F8, pos);
 			break;
-            default: ASSERT(0); break;
+            default: break;
         }
     }
 
@@ -201,7 +159,6 @@ int MakeMove(S_BOARD *pos, int move) {
     pos->fiftyMove++;
 
 	if(captured != EMPTY) {
-        ASSERT(PieceValid(captured));
         ClearPiece(to, pos);
         pos->fiftyMove = 0;
     }
@@ -209,18 +166,13 @@ int MakeMove(S_BOARD *pos, int move) {
 	pos->hisPly++;
 	pos->ply++;
 
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
-
 	if(PiecePawn[pos->pieces[from]]) {
         pos->fiftyMove = 0;
         if(move & 0x80000) {
             if(side==WHITE) {
                 pos->enPas=from+10;
-                ASSERT(RanksBrd[pos->enPas]==RANK_3);
             } else {
                 pos->enPas=from-10;
-                ASSERT(RanksBrd[pos->enPas]==RANK_6);
             }
             HASH_EP;
         }
@@ -229,8 +181,7 @@ int MakeMove(S_BOARD *pos, int move) {
 	MovePiece(from, to, pos);
 
 	int prPce = PROMOTED(move);
-    if(prPce != EMPTY)   {
-        ASSERT(PieceValid(prPce) && !PiecePawn[prPce]);
+    if(prPce != EMPTY){
         ClearPiece(to, pos);
         AddPiece(to, pos, prPce);
     }
@@ -242,34 +193,22 @@ int MakeMove(S_BOARD *pos, int move) {
 	pos->side ^= 1;
     HASH_SIDE;
 
-    ASSERT(CheckBoard(pos));
-
-
 	if(SqAttacked(pos->KingSq[side],pos->side,pos))  {
         TakeMove(pos);
         return 0;
     }
 
 	return 1;
-
 }
 
 void TakeMove(S_BOARD *pos) {
 
-	ASSERT(CheckBoard(pos));
-
 	pos->hisPly--;
     pos->ply--;
-
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
 
     int move = pos->history[pos->hisPly].move;
     int from = FROMSQ(move);
     int to = TOSQ(move);
-
-	ASSERT(SqOnBoard(from));
-    ASSERT(SqOnBoard(to));
 
 	if(pos->enPas != NO_SQ) HASH_EP;
     HASH_CA;
@@ -296,7 +235,7 @@ void TakeMove(S_BOARD *pos) {
             case C8: MovePiece(D8, A8, pos); break;
             case G1: MovePiece(F1, H1, pos); break;
             case G8: MovePiece(F8, H8, pos); break;
-            default: ASSERT(0); break;
+            default: break;
         }
     }
 
@@ -308,25 +247,16 @@ void TakeMove(S_BOARD *pos) {
 
 	int captured = CAPTURED(move);
     if(captured != EMPTY) {
-        ASSERT(PieceValid(captured));
         AddPiece(to, pos, captured);
     }
 
-	if(PROMOTED(move) != EMPTY)   {
-        ASSERT(PieceValid(PROMOTED(move)) && !PiecePawn[PROMOTED(move)]);
+	if(PROMOTED(move) != EMPTY){
         ClearPiece(from, pos);
         AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? WHITE_PAWN : BLACK_PAWN));
     }
-
-    ASSERT(CheckBoard(pos));
-
 }
 
-
 void MakeNullMove(S_BOARD *pos) {
-
-    ASSERT(CheckBoard(pos));
-    ASSERT(!SqAttacked(pos->KingSq[pos->side],pos->side^1,pos));
 
     pos->ply++;
     pos->history[pos->hisPly].posKey = pos->posKey;
@@ -343,15 +273,10 @@ void MakeNullMove(S_BOARD *pos) {
     pos->hisPly++;
     HASH_SIDE;
 
-    ASSERT(CheckBoard(pos));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
-
     return;
-} // MakeNullMove
+}
 
 void TakeNullMove(S_BOARD *pos) {
-    ASSERT(CheckBoard(pos));
 
     pos->hisPly--;
     pos->ply--;
@@ -365,8 +290,4 @@ void TakeNullMove(S_BOARD *pos) {
     if(pos->enPas != NO_SQ) HASH_EP;
     pos->side ^= 1;
     HASH_SIDE;
-
-    ASSERT(CheckBoard(pos));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
 }

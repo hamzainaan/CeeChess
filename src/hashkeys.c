@@ -11,7 +11,6 @@ U64 GeneratePosKey(const S_BOARD *pos) {
 	for(sq = 0; sq < 120; ++sq) {
 		piece = pos->pieces[sq];
 		if(piece!=NO_SQ && piece!=EMPTY && piece != OFFBOARD) {
-			ASSERT(piece>=WHITE_PAWN && piece<=BLACK_KING);
 			finalKey ^= PieceKeys[piece][sq];
 		}		
 	}
@@ -21,16 +20,10 @@ U64 GeneratePosKey(const S_BOARD *pos) {
 	}
 		
 	if(pos->enPas != NO_SQ) {
-		ASSERT(pos->enPas>=0 && pos->enPas<120);
-		ASSERT(SqOnBoard(pos->enPas));
-		ASSERT(RanksBrd[pos->enPas] == RANK_3 || RanksBrd[pos->enPas] == RANK_6);
 		finalKey ^= PieceKeys[EMPTY][pos->enPas];
 	}
 	
-	ASSERT(pos->castlePerm>=0 && pos->castlePerm<=15);
-	
 	finalKey ^= CastleKeys[pos->castlePerm];
-	
 	return finalKey;
 }
 

@@ -14,8 +14,6 @@ void InitEval() {
 
 static inline int MaterialDraw(const S_BOARD *pos) {
 
-	ASSERT(CheckBoard(pos));
-
     if (!pos->pceNum[WHITE_ROOK] && !pos->pceNum[BLACK_ROOK] && !pos->pceNum[WHITE_QUEEN] && !pos->pceNum[BLACK_QUEEN]) {
 	  if (!pos->pceNum[BLACK_BISHOP] && !pos->pceNum[WHITE_BISHOP]) {
 	      if (pos->pceNum[WHITE_KNIGHT] < 3 && pos->pceNum[BLACK_KNIGHT] < 3) {  return 1; }
@@ -36,9 +34,7 @@ static inline int MaterialDraw(const S_BOARD *pos) {
   return 0;
 }
 
-int EvalPosition(S_BOARD *pos) {
-
-	ASSERT(CheckBoard(pos));
+int EvalPosition(S_BOARD *pos) {;
 
 	// test for drawn position before doing anything
 	if((!pos->pceNum[WHITE_PAWN] && !pos->pceNum[BLACK_PAWN] && MaterialDraw(pos) == 1)) {
@@ -63,8 +59,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = WHITE_KING;
 	sq = pos->pList[pce][0];
 	int wKsq64 = SQ64(sq);
-	ASSERT(SqOnBoard(sq));
-	ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
 
 	scoreMG += KingMG[SQ64(sq)];
 	scoreEG += KingEG[SQ64(sq)];
@@ -79,8 +73,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = BLACK_KING;
 	sq = pos->pList[pce][0];
 	int bKsq64 = SQ64(sq);
-	ASSERT(SqOnBoard(sq));
-	ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
 
 	scoreMG -= KingMG[MIRROR64(SQ64(sq))];
 	scoreEG -= KingEG[MIRROR64(SQ64(sq))];
@@ -95,9 +87,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = WHITE_PAWN;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
 
 		int passed = 0;
 		int connected = 0;
@@ -137,9 +126,6 @@ int EvalPosition(S_BOARD *pos) {
 		int passed = 0;
 		int connected = 0;
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= PawnMG[MIRROR64(SQ64(sq))];
 		scoreEG -= PawnEG[MIRROR64(SQ64(sq))];
 
@@ -172,9 +158,6 @@ int EvalPosition(S_BOARD *pos) {
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-
 		scoreMG += KnightMG[SQ64(sq)];
 		scoreEG += KnightEG[SQ64(sq)];
 		phase -= minorPhase;
@@ -186,14 +169,9 @@ int EvalPosition(S_BOARD *pos) {
 	pce = BLACK_KNIGHT;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= KnightMG[MIRROR64(SQ64(sq))];
 		scoreEG -= KnightEG[MIRROR64(SQ64(sq))];
 		phase -= minorPhase;
-
 		bPhase += minorPhase;
 		kingScoreB -= (TropismValues[0] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
@@ -201,9 +179,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = WHITE_BISHOP;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
 
 		scoreMG += BishopMG[SQ64(sq)];
 		scoreEG += BishopEG[SQ64(sq)];
@@ -217,14 +192,9 @@ int EvalPosition(S_BOARD *pos) {
 	pce = BLACK_BISHOP;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= BishopMG[MIRROR64(SQ64(sq))];
 		scoreEG -= BishopEG[MIRROR64(SQ64(sq))];
 		phase -= minorPhase;
-
 		bPhase += minorPhase;
 		diagonal_bonus = bonus_dia_distance[abs(diag_ne[SQ64(sq)] - diag_ne[wKsq64])] + bonus_dia_distance[abs(diag_nw[SQ64(sq)] - diag_nw[wKsq64])];
 		kingScoreB -= (TropismValues[1] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
@@ -233,11 +203,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = WHITE_ROOK;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG += RookMG[SQ64(sq)];
 		scoreEG += RookEG[SQ64(sq)];
 
@@ -247,7 +212,6 @@ int EvalPosition(S_BOARD *pos) {
 			scoreMG += RookSemiOpenFileMG;
 		}
 		phase -= rookPhase;
-
 		wPhase += rookPhase;
 		kingScoreW += (TropismValues[2] * DistTable[SQ64(sq)][bKsq64]) / 16;
 	}
@@ -255,11 +219,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = BLACK_ROOK;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG -= RookMG[MIRROR64(SQ64(sq))];
 		scoreEG -= RookEG[MIRROR64(SQ64(sq))];
 
@@ -269,7 +228,6 @@ int EvalPosition(S_BOARD *pos) {
 			scoreMG -= RookSemiOpenFileMG;
 		}
 		phase -= rookPhase;
-
 		bPhase += rookPhase;
 		kingScoreB -= (TropismValues[2] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
@@ -277,10 +235,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = WHITE_QUEEN;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
 
 		scoreMG += QueenMG[SQ64(sq)];
 		scoreEG += QueenEG[SQ64(sq)];
@@ -291,7 +245,6 @@ int EvalPosition(S_BOARD *pos) {
 			scoreMG += QueenSemiOpenFileMG;
 		}
 		phase -= queenPhase;
-
 		wPhase += queenPhase;
 		diagonal_bonus = bonus_dia_distance[abs(diag_ne[SQ64(sq)] - diag_ne[bKsq64])] + bonus_dia_distance[abs(diag_nw[SQ64(sq)] - diag_nw[bKsq64])];
 		kingScoreW += (TropismValues[3] * (DistTable[SQ64(sq)][bKsq64] + diagonal_bonus)) / 16;
@@ -300,11 +253,6 @@ int EvalPosition(S_BOARD *pos) {
 	pce = BLACK_QUEEN;
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG -= QueenMG[MIRROR64(SQ64(sq))];
 		scoreEG -= QueenEG[MIRROR64(SQ64(sq))];
 
@@ -314,25 +262,17 @@ int EvalPosition(S_BOARD *pos) {
 			scoreMG -= QueenSemiOpenFileMG;
 		}
 		phase -= queenPhase;
-
 		bPhase += queenPhase;
 		diagonal_bonus = bonus_dia_distance[abs(diag_ne[SQ64(sq)] - diag_ne[wKsq64])] + bonus_dia_distance[abs(diag_nw[SQ64(sq)] - diag_nw[wKsq64])];
 		kingScoreB -= (TropismValues[3] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
 	}
-	//8/p6k/6p1/5p2/P4K2/8/5pB1/8 b - - 2 62
+	
 	pce = WHITE_KING;
 	sq = pos->pList[pce][0];
-	ASSERT(SqOnBoard(sq));
-	ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-
 	scoreMG += KingMG[SQ64(sq)];
 	scoreEG += KingEG[SQ64(sq)];
-
 	pce = BLACK_KING;
 	sq = pos->pList[pce][0];
-	ASSERT(SqOnBoard(sq));
-	ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 	scoreMG -= KingMG[MIRROR64(SQ64(sq))];
 	scoreEG -= KingEG[MIRROR64(SQ64(sq))];
 

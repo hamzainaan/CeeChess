@@ -8,8 +8,6 @@
 
 static int MaterialDrawTunable(const S_BOARD *pos) {
 
-	ASSERT(CheckBoard(pos));
-
     if (!pos->pceNum[WHITE_ROOK] && !pos->pceNum[BLACK_ROOK] && !pos->pceNum[WHITE_QUEEN] && !pos->pceNum[BLACK_QUEEN]) {
 	  if (!pos->pceNum[BLACK_BISHOP] && !pos->pceNum[WHITE_BISHOP]) {
 	      if (pos->pceNum[WHITE_KNIGHT] < 3 && pos->pceNum[BLACK_KNIGHT] < 3) {  return 1; }
@@ -31,9 +29,6 @@ static int MaterialDrawTunable(const S_BOARD *pos) {
 }
 
 static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
-
-	ASSERT(CheckBoard(pos));
-
 	// test for drawn position before doing anything
 	if(!pos->pceNum[WHITE_PAWN] && !pos->pceNum[BLACK_PAWN] && MaterialDrawTunable(pos) == 1) {
 		return 0;
@@ -57,8 +52,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	pce = WHITE_KING;
 	sq = pos->pList[pce][0];
 	int wKsq64 = SQ64(sq);
-	ASSERT(SqOnBoard(sq));
-	ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
 
 	scoreMG += params->TKingMG[SQ64(sq)];
 	scoreEG += params->TKingEG[SQ64(sq)];
@@ -73,8 +66,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	pce = BLACK_KING;
 	sq = pos->pList[pce][0];
 	int bKsq64 = SQ64(sq);
-	ASSERT(SqOnBoard(sq));
-	ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
 
 	scoreMG -= params->TKingMG[MIRROR64(SQ64(sq))];
 	scoreEG -= params->TKingEG[MIRROR64(SQ64(sq))];
@@ -94,9 +85,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 
 		int passed = 0;
 		int connected = 0;
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
 
 		scoreMG += params->TPawnMG[SQ64(sq)];
 		scoreEG += params->TPawnEG[SQ64(sq)];
@@ -136,9 +124,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		int passed = 0;
 		int connected = 0;
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= params->TPawnMG[MIRROR64(SQ64(sq))];
 		scoreEG -= params->TPawnEG[MIRROR64(SQ64(sq))];
 
@@ -172,15 +157,10 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[1];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-
 		scoreMG += params->TKnightMG[SQ64(sq)];
 		scoreEG += params->TKnightEG[SQ64(sq)];
 		phase -= TminorPhase;
 		wPhase += TminorPhase;
-
 		kingScoreW += (params->TTropismValues[0] * DistTable[SQ64(sq)][bKsq64]) / 16;
 	}
 
@@ -189,15 +169,10 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[1];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= params->TKnightMG[MIRROR64(SQ64(sq))];
 		scoreEG -= params->TKnightEG[MIRROR64(SQ64(sq))];
 		phase -= TminorPhase;
 		bPhase += TminorPhase;
-
 		kingScoreB -= (params->TTropismValues[0] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
 
@@ -206,15 +181,10 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[2];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-
 		scoreMG += params->TBishopMG[SQ64(sq)];
 		scoreEG += params->TBishopEG[SQ64(sq)];
 		phase -= TminorPhase;
 		wPhase += TminorPhase;
-
 		diagonal_bonus = Tbonus_dia_distance[abs(Tdiag_ne[SQ64(sq)] - Tdiag_ne[bKsq64])] + Tbonus_dia_distance[abs(Tdiag_nw[SQ64(sq)] - Tdiag_nw[bKsq64])];
 		kingScoreW += (params->TTropismValues[1] * (DistTable[SQ64(sq)][bKsq64] + diagonal_bonus)) / 16;
 	}
@@ -224,15 +194,10 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[2];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-
 		scoreMG -= params->TBishopMG[MIRROR64(SQ64(sq))];
 		scoreEG -= params->TBishopEG[MIRROR64(SQ64(sq))];
 		phase -= TminorPhase;
 		bPhase += TminorPhase;
-
 		diagonal_bonus = Tbonus_dia_distance[abs(Tdiag_ne[SQ64(sq)] - Tdiag_ne[wKsq64])] + Tbonus_dia_distance[abs(Tdiag_nw[SQ64(sq)] - Tdiag_nw[wKsq64])];
 		kingScoreB -= (params->TTropismValues[1] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
 	}
@@ -242,11 +207,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[3];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG += params->TRookMG[SQ64(sq)];
 		scoreEG += params->TRookEG[SQ64(sq)];
 
@@ -259,7 +219,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		}
 		phase -= TrookPhase;
 		wPhase += TrookPhase;
-
 		kingScoreW += (params->TTropismValues[2] * DistTable[SQ64(sq)][bKsq64]) / 16;
 	}
 
@@ -268,11 +227,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[3];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq))>=0 && MIRROR64(SQ64(sq))<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG -= params->TRookMG[MIRROR64(SQ64(sq))];
 		scoreEG -= params->TRookEG[MIRROR64(SQ64(sq))];
 
@@ -285,7 +239,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		}
 		phase -= TrookPhase;
 		bPhase += TrookPhase;
-
 		kingScoreB -= (params->TTropismValues[2] * DistTable[SQ64(sq)][wKsq64]) / 16;
 	}
 
@@ -294,11 +247,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG += pos->pceNum[pce] * params->TPieceValEG[4];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG += params->TQueenMG[SQ64(sq)];
 		scoreEG += params->TQueenEG[SQ64(sq)];
 
@@ -311,7 +259,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		}
 		phase -= TqueenPhase;
 		wPhase += TqueenPhase;
-	
 		diagonal_bonus = Tbonus_dia_distance[abs(Tdiag_ne[SQ64(sq)] - Tdiag_ne[bKsq64])] + Tbonus_dia_distance[abs(Tdiag_nw[SQ64(sq)] - Tdiag_nw[bKsq64])];
 		kingScoreW += (params->TTropismValues[3] * (DistTable[SQ64(sq)][bKsq64] + diagonal_bonus)) / 16;
 	}
@@ -321,11 +268,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	scoreEG -= pos->pceNum[pce] * params->TPieceValEG[4];
 	for(pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq)>=0 && SQ64(sq)<=63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
-
 		scoreMG -= params->TQueenMG[MIRROR64(SQ64(sq))];
 		scoreEG -= params->TQueenEG[MIRROR64(SQ64(sq))];
 
@@ -338,11 +280,10 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 		}
 		phase -= TqueenPhase;
 		bPhase += TqueenPhase;
-
 		diagonal_bonus = Tbonus_dia_distance[abs(Tdiag_ne[SQ64(sq)] - Tdiag_ne[wKsq64])] + Tbonus_dia_distance[abs(Tdiag_nw[SQ64(sq)] - Tdiag_nw[wKsq64])];
 		kingScoreB -= (params->TTropismValues[3] * (DistTable[SQ64(sq)][wKsq64] + diagonal_bonus)) / 16;
 	}
-	//8/p6k/6p1/5p2/P4K2/8/5pB1/8 b - - 2 62
+
 	if(pos->pceNum[WHITE_BISHOP] >= 2) {
 		scoreMG += params->TBishopPairMG;
 		scoreEG += params->TBishopPairEG;
@@ -365,7 +306,6 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 
 	// For tuning, instead of returning the score based on the side to move, return the score in terms of white
 	return score;
-
 }
 
 void printBar(int size, char* bar) {

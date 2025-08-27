@@ -23,6 +23,15 @@ const char* StyleNames[STYLE_COUNT] = {
 // UCI options array
 S_UCI_OPTION UciOptions[] = {
     {
+        "Threads",
+        UCI_OPTION_SPIN,
+        DEFAULT_THREADS,
+        MIN_THREADS,
+        MAX_THREADS,
+        DEFAULT_THREADS,
+        ThreadsOptionChanged
+    },
+    {
         "Hash",
         UCI_OPTION_SPIN,
         DEFAULT_HASH_SIZE,
@@ -39,15 +48,6 @@ S_UCI_OPTION UciOptions[] = {
         0,
         0,
         ClearHashOptionPressed
-    },
-    {
-        "Threads",
-        UCI_OPTION_SPIN,
-        DEFAULT_THREADS,
-        MIN_THREADS,
-        MAX_THREADS,
-        DEFAULT_THREADS,
-        ThreadsOptionChanged
     },
     {
         "Style",
