@@ -699,7 +699,7 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 		if (epoch < 10) {
 			// first do simulated annealing for first 10 iterations
 			// explorative part of the algorithm, so annealing parameters are tuned for high exploration
-			int sim_iters = 500;
+			int sim_iters = 5000;
 			double temperature = init_temp / epoch;
 			double cooling_rate = 0.95;
 			double tune_probability = 0.05;

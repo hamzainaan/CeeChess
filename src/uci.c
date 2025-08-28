@@ -13,7 +13,7 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 	info->timeset = 0;
 
 	if ((ptr = strstr(line,"infinite"))) {
-		;
+		depth = MAXDEPTH;
 	}
 
 	if ((ptr = strstr(line,"binc")) && pos->side == BLACK) {
@@ -215,7 +215,6 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             break;
         } else if (!strncmp(line, "board", 5)) {
             PrintBoard(pos);
-            break;
         } else if (!strncmp(line, "tune", 4)) {
             // Parse tune command
             char *ptr = line + 5; // Skip "tune "

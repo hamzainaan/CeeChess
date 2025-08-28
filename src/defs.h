@@ -23,7 +23,8 @@ enum {
   A5 = 61, B5, C5, D5, E5, F5, G5, H5,
   A6 = 71, B6, C6, D6, E6, F6, G6, H6,
   A7 = 81, B7, C7, D7, E7, F7, G7, H7,
-  A8 = 91, B8, C8, D8, E8, F8, G8, H8, NO_SQ, OFFBOARD
+  A8 = 91, B8, C8, D8, E8, F8, G8, H8, 
+  NO_SQ, OFFBOARD
 };
 
 typedef struct {
@@ -184,14 +185,6 @@ extern char 		*PrMove(const int move);
 extern char 		*PrSq(const int sq);
 extern void 		PrintMoveList(const S_MOVELIST *list);
 extern int 			ParseMove(char *ptrChar, S_BOARD *pos);
-extern int 			SqOnBoard(const int sq);
-extern int 			SideValid(const int side);
-extern int 			FileRankValid(const int fr);
-extern int 			PieceValidEmpty(const int pce);
-extern int 			PieceValid(const int pce);
-extern int 			SqIs120(const int sq);
-extern int 			PceValidEmptyOffbrd(const int pce);
-extern int 			MoveListOk(const S_MOVELIST *list,  const S_BOARD *pos);
 extern void 		DebugAnalysisTest(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table);
 extern int 			GetMobility(const S_BOARD *pos, const int side);
 extern void 		GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list);

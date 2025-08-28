@@ -17,7 +17,6 @@ const int LoopNonSlidePceMob[4] = {
  WHITE_KNIGHT, 0, BLACK_KNIGHT, 0
 };
 
-
 const int LoopSlideIndex[2] = { 0, 4 };
 const int LoopNonSlideIndex[2] = { 0, 3 };
 const int LoopNonSlideIndexMob[2] = { 0, 2 };
@@ -42,13 +41,6 @@ const int NumDir[13] = {
  0, 0, 8, 4, 4, 8, 8, 0, 8, 4, 4, 8, 8
 };
 
-/*
-PV Move
-Cap -> MvvLVA
-Killers
-HistoryScore
-
-*/
 const int VictimScore[13] = { 0, 100, 200, 300, 400, 500, 600, 100, 200, 300, 400, 500, 600 };
 static int MvvLvaScores[13][13];
 
@@ -323,7 +315,6 @@ void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list) {
 		pce = LoopNonSlidePce[pceIndex++];
 	}
 }
-
 
 void GenerateAllCaps(const S_BOARD *pos, S_MOVELIST *list) {
 
