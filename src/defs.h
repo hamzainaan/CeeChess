@@ -27,6 +27,31 @@ enum {
   NO_SQ, OFFBOARD
 };
 
+enum KnightDirection {
+    KN_NNW = -21,
+    KN_NWW = -19,
+    KN_SWW = -12,
+    KN_SSW = -8,
+    KN_SSE = 8,
+    KN_SEE = 12,
+    KN_NEE = 19,
+    KN_NNE = 21
+};
+
+enum RookDirection {
+    RK_W = -1,
+    RK_S = -10,
+    RK_E = 1,
+    RK_N = 10
+};
+
+enum BishopDirection {
+    BI_SW = -11,
+    BI_SE = -9,
+    BI_NW = 9,
+    BI_NE = 11
+};
+
 typedef struct {
 	int move;
 	int score;
@@ -133,6 +158,10 @@ typedef struct {
 #define MIRROR64(sq) (Mirror64[(sq)])
 #define COL(i) ((i) % 8)
 #define ROW(i) ((i) / 8)
+#define KN_DIR_COUNT 8
+#define RK_DIR_COUNT 4
+#define BI_DIR_COUNT 4
+#define KI_DIR_COUNT 8
 
 extern int 			Sq120ToSq64[120];
 extern int 			Sq64ToSq120[64];
@@ -171,6 +200,10 @@ extern U64 			BlackPawnShield[64];
 extern U64 			WhitePawnShield[64];
 extern S_HASHTABLE 	HashTable[1];
 extern int 			DistTable[64][64];
+extern const int 	KnDir[];
+extern const int 	RkDir[];
+extern const int 	BiDir[];
+extern const int 	KiDir[];
 
 extern void 		AllInit();
 extern int 			PopBit(U64 *bb);

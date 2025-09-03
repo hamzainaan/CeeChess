@@ -41,14 +41,12 @@ static int EvalPositionTunable(S_BOARD *pos, S_EVAL_PARAMS *params) {
 	int phase = TtotalPhase;
 	int wPhase = 0;
 	int bPhase = 0;
-	//int mobility = GetMobility(pos, WHITE) - GetMobility(pos, BLACK);
-	int scoreMG = 0; //(pos->material[WHITE] - pos->material[BLACK]); //+ (mobilityFactorMG * mobility);
-	int scoreEG = 0; //(pos->material[WHITE + 2] - pos->material[BLACK + 2]); //+ (mobilityFactorEG * mobility);
+	int scoreMG = 0;
+	int scoreEG = 0;
 
 	int kingScoreW = 0;
 	int kingScoreB = 0;
 
-	// get king squares to calculate king tropism
 	pce = WHITE_KING;
 	sq = pos->pList[pce][0];
 	int wKsq64 = SQ64(sq);

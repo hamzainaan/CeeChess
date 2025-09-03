@@ -10,10 +10,14 @@ CFLAGS ?= -O3 -s -Wall -fopenmp
 LDFLAGS ?= -lm -fopenmp
 
 # Set target OS: windows, linux or android (default: detect from OS)
-TARGET_OS ?= $(shell if [ "$(OS)" = "Windows_NT" ]; then echo windows; else echo linux; fi)
+ifeq ($(OS),Windows_NT)
+TARGET_OS ?= windows
+else
+TARGET_OS ?= linux
+endif
 
 ifeq ($(TARGET_OS),windows)
-	RM = del /Q
+	RM = powershell -Command "Remove-Item -Force -ErrorAction Ignore"
 	EXE_EXTENSION = .exe
 	SRC_DIR = ./src
 	BIN_DIR = ./bin
@@ -60,4 +64,4 @@ $(TARGET)$(EXE_EXTENSION): $(SRCS)
 	$(CC) $^ -o $@ $(CFLAGS) $(OS_CFLAGS) $(LDFLAGS)
 
 clean:
-	-$(RM) $(TARGET)$(EXE_EXTENSION)
+	-$(RM) "$(TARGET)$(EXE_EXTENSION)"
