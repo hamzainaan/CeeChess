@@ -96,23 +96,23 @@ typedef struct {
 } S_BOARD;
 
 typedef struct {
-	int starttime;
-	int stoptime;
-	int depth;
-	int timeset;
-	int movestogo;
-	long nodes;
-	int quit;
-	int stopped;
-	float fh;
-	float fhf;
-	int nullCut;
-	int singularExt;
-	int threadCount;
-	int threadNum; // 0 = main thread, 1+ = worker threads
-	pthread_t threadHandle;
-	pthread_mutex_t mutex;
-	int searching;
+    int starttime;
+    int stoptime;
+    int depth;
+    int timeset;
+    int movestogo;
+    long nodes;
+    int quit;
+    int stopped;
+    float fh;
+    float fhf;
+    int nullCut;
+    int singularExt;
+    int threadCount;
+    int threadNum; // 0 = main thread, 1+ = worker threads
+    pthread_t threadHandle;
+    pthread_mutex_t mutex;
+    int searching;
 } S_SEARCHINFO;
 
 #define FROMSQ(m) ((m) & 0x7F)

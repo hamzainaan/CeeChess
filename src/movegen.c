@@ -467,26 +467,6 @@ inline int GetMobility(const S_BOARD *pos, int side) {
 				}
 			}
 		}
-
-		// not using king moves in mobility
-		/*
-		if(pos->castlePerm & WKCA) {
-			if(pos->pieces[F1] == EMPTY && pos->pieces[G1] == EMPTY) {
-				if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(F1,BLACK,pos) ) {
-					count++;
-				}
-			}
-		}
-
-		if(pos->castlePerm & WQCA) {
-			if(pos->pieces[D1] == EMPTY && pos->pieces[C1] == EMPTY && pos->pieces[B1] == EMPTY) {
-				if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(D1,BLACK,pos) ) {
-					count++;
-				}
-			}
-		}
-		*/
-
 	} else {
 		for(pceNum = 0; pceNum < pos->pceNum[BLACK_PAWN]; ++pceNum) {
 			sq = pos->pList[BLACK_PAWN][pceNum];
@@ -514,25 +494,6 @@ inline int GetMobility(const S_BOARD *pos, int side) {
 				}
 			}
 		}
-
-		// not using king moves in mobility
-		/*
-		if(pos->castlePerm &  BKCA) {
-			if(pos->pieces[F8] == EMPTY && pos->pieces[G8] == EMPTY) {
-				if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(F8,WHITE,pos) ) {
-					count++;
-				}
-			}
-		}
-
-		if(pos->castlePerm &  BQCA) {
-			if(pos->pieces[D8] == EMPTY && pos->pieces[C8] == EMPTY && pos->pieces[B8] == EMPTY) {
-				if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(D8,WHITE,pos) ) {
-					count++;
-				}
-			}
-		}
-		*/
 	}
 
 	/* Loop for slide pieces */

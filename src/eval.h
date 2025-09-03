@@ -48,7 +48,6 @@ const int RookOpenFileMG            =   62;
 const int RookSemiOpenFileMG        =   26;
 const int QueenOpenFileMG           =   -3;
 const int QueenSemiOpenFileMG       =    5;
-
 const int BishopPairEG              =   53;
 const int PawnPassedEG[8]           = {-18,   7,  12,  38,  60, 123, 182, 269 };
 const int PawnPassedConnectedEG[8]  = {-19,  12,  15,  28,  26, -19,  33, 135 };

@@ -7,20 +7,15 @@
 #include "uci_options.h"
 
 // Null Move Pruning Values
-static const int R = 2;
 static const int minDepth = 3;
 
 // Razoring Values
 static const int RazorDepth = 2;
-static const int RazorMargin[3] = {0, 200, 400};
+static const int RazorMargin = 300;
 
 // Futility Values
 static const int FutilityDepth = 10;
 static const int FutilityMargin = 150;
-
-// Reverse Futility Values
-static const int RevFutilityDepth = 10;
-static const int RevFutilityMargin = 200;
 
 // LMR Values
 static const int LateMoveDepth = 3;
@@ -48,7 +43,7 @@ void InitSearch() {
 	// creating the LMR table entries (idea from Ethereal)
 	for (int moveDepth = 1; moveDepth < 64; moveDepth++)
   		for (int played = 1; played < 64; played++)
-      		LMRTable[moveDepth][played] = 1 + (log(moveDepth) * log(played) / 1.75);
+      		LMRTable[moveDepth][played] = (int) (0.5 + log(moveDepth) * log(played) / 2.1);
 	
 	// Initialize global mutex
 	pthread_mutex_init(&GlobalMutex, NULL);
@@ -308,129 +303,141 @@ static int IsSingular(int move, int depth, S_BOARD *pos, S_SEARCHINFO *info, S_H
 
 static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO *info, int DoNull, int DoLMR, S_HASHTABLE *table) {
 
-	int InCheck = SqAttacked(pos->KingSq[pos->side],pos->side^1,pos);
+    int InCheck = SqAttacked(pos->KingSq[pos->side],pos->side^1,pos);
 
-	// Check Extension (Extend all checks before dropping into Quiescence)
-	if(InCheck) {
-		depth++;
-	}
+    // Check Extension (Extend all checks before dropping into Quiescence)
+    if(InCheck) {
+        depth++;
+    }
 
-	if(depth <= 0) {
-		return Quiescence(alpha, beta, pos, info);
-		// return EvalPosition(pos);
-	}
+    if(depth <= 0) {
+        return Quiescence(alpha, beta, pos, info);
+        // return EvalPosition(pos);
+    }
 
-	if(( info->nodes & 2047 ) == 0) {
-		CheckUp(info);
-	}
+    if(( info->nodes & 2047 ) == 0) {
+        CheckUp(info);
+    }
 
-	// Thread-safe node counter increment
-	pthread_mutex_lock(&info->mutex);
-	info->nodes++;
-	pthread_mutex_unlock(&info->mutex);
+    // Thread-safe node counter increment
+    pthread_mutex_lock(&info->mutex);
+    info->nodes++;
+    pthread_mutex_unlock(&info->mutex);
 
-	if((IsRepetition(pos) || pos->fiftyMove >= 100) && pos->ply) {
-		return 0;
-	}
+    if((IsRepetition(pos) || pos->fiftyMove >= 100) && pos->ply) {
+        return 0;
+    }
 
-	if(pos->ply > MAXDEPTH - 1) {
-		return EvalPosition(pos);
-	}
+    if(pos->ply > MAXDEPTH - 1) {
+        return EvalPosition(pos);
+    }
 
-	// Mate Distance Pruning (finds mates more quickly)
-	alpha = MAX(alpha, -INFINITE + pos->ply);
-	beta = MIN(beta, INFINITE - pos->ply);
-	if (alpha >= beta) {
-		return alpha;
-	}
+    // Mate Distance Pruning (finds mates more quickly)
+    alpha = MAX(alpha, -INFINITE + pos->ply);
+    beta = MIN(beta, INFINITE - pos->ply);
+    if (alpha >= beta) {
+        return alpha;
+    }
 
-	int Score = -INFINITE;
-	int PvMove = 0;
+    int Score = -INFINITE;
+    int PvMove = 0;
 
-	if( ProbeHashEntry(pos, table, &PvMove, &Score, alpha, beta, depth) == 1 ) {
-		table->cut++;
-		return Score;
-	}
+    if( ProbeHashEntry(pos, table, &PvMove, &Score, alpha, beta, depth) == 1 ) {
+        table->cut++;
+        return Score;
+    }
 
-	// Internal Iterative Deepening (IID)
-	// If we don't have a PV move and depth is sufficient, do a shallower search to find a good move
-	if (PvMove == 0 && depth >= 4 && !InCheck) {
-		Score = AlphaBeta(alpha, beta, depth - 2, pos, info, DoNull, DoLMR, table);
-		PvMove = ProbePvMove(pos, table);
-	}
+    // Internal Iterative Deepening (IID)
+    // If we don't have a PV move and depth is sufficient, do a shallower search to find a good move
+    if (PvMove == 0 && depth >= 4 && !InCheck) {
+        Score = AlphaBeta(alpha, beta, depth - 2, pos, info, DoNull, DoLMR, table);
+        PvMove = ProbePvMove(pos, table);
+    }
 
-	// Singular Extensions
-	// If we have a PV move and depth is sufficient, check if it's singular (much better than all other moves)
-	if (PvMove != 0 && depth >= SingularExtensionDepth && !InCheck && abs(beta) < ISMATE) {
-		// Check if the move is singular
-		if (IsSingular(PvMove, depth, pos, info, table)) {
-			// Extend the search depth for this move
-			depth++;
-		}
-	}
+    // Singular Extensions
+    // If we have a PV move and depth is sufficient, check if it's singular (much better than all other moves)
+    if (PvMove != 0 && depth >= SingularExtensionDepth && !InCheck && abs(beta) < ISMATE) {
+        // Check if the move is singular
+        if (IsSingular(PvMove, depth, pos, info, table)) {
+            // Extend the search depth for this move
+            depth++;
+        }
+    }
 
-	int positionEval = EvalPosition(pos);
+    int positionEval = EvalPosition(pos);
 
-	// Razoring (prunes near alpha)
-	if (depth <= RazorDepth && !PvMove && !InCheck && positionEval + RazorMargin[depth] <= alpha) {
-		// drop into qSearch if move most likely won't beat alpha
-		Score = Quiescence(alpha - RazorMargin[depth], beta + RazorMargin[depth], pos, info);
-		if (Score + RazorMargin[depth] <= alpha) {
-			return Score + RazorMargin[depth];
-		}
-	}
+    // Razoring (prunes near alpha)
+    if (depth <= RazorDepth && !PvMove && !InCheck && positionEval + RazorMargin <= alpha) {
+        // drop into qSearch if move most likely won't beat alpha
+        int rWindow = alpha - RazorMargin;
+        Score = Quiescence(rWindow, rWindow + 1, pos, info);
+        if (Score <= rWindow) {
+            return Score;
+        }
+    }
 
-	// Reverse Futility Pruning (prunes near beta)
-	if (depth <= RevFutilityDepth && !PvMove && !InCheck && abs(beta) < ISMATE && positionEval - (RevFutilityMargin * depth) >= beta) {
-		return positionEval - (RevFutilityMargin * depth);
-	}
+    // Reverse Futility Pruning (prunes near beta)
+    if (depth <= 6 && !PvMove && !InCheck && abs(beta) < ISMATE && 
+        positionEval - 70 * depth >= beta && pos->bigPce[pos->side] > 0) {
+        return positionEval;
+    }
 
-	// Probcut: Try a reduced depth search with a raised beta to quickly detect strong moves
-	if (depth >= ProbcutDepth && !InCheck && abs(beta) < ISMATE) {
-		int probBeta = beta + ProbcutMargin;
-		S_MOVELIST list[1];
-		GenerateAllCaps(pos, list);
+    // Probcut: Try a reduced depth search with a raised beta to quickly detect strong moves
+    if (depth >= ProbcutDepth && !InCheck && abs(beta) < ISMATE) {
+        int probBeta = beta + ProbcutMargin;
+        S_MOVELIST list[1];
+        GenerateAllCaps(pos, list);
 
-		for (int MoveNum = 0; MoveNum < list->count; ++MoveNum) {
-			PickNextMove(MoveNum, list);
+        for (int MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+            PickNextMove(MoveNum, list);
 
-			if (!MakeMove(pos, list->moves[MoveNum].move)) {
-				continue;
-			}
+            if (!MakeMove(pos, list->moves[MoveNum].move)) {
+                continue;
+            }
 
-			// Try a reduced depth search with raised beta
-			int probScore = -AlphaBeta(-probBeta, -probBeta + 1, depth - 4, pos, info, 0, 0, table);
-			TakeMove(pos);
+            // Try a reduced depth search with raised beta
+            int probScore = -AlphaBeta(-probBeta, -probBeta + 1, depth - 4, pos, info, 0, 0, table);
+            TakeMove(pos);
 
-			if (info->stopped == 1) {
-				return beta;
-			}
+            if (info->stopped == 1) {
+                return beta;
+            }
 
-			// If this move beats the raised beta, it will likely beat the real beta
-			if (probScore >= probBeta) {
-				return probScore;
-			}
-		}
-	}
+            // If this move beats the raised beta, it will likely beat the real beta
+            if (probScore >= probBeta) {
+                return probScore;
+            }
+        }
+    }
 
-	// Null Move Pruning
-	if(depth >= minDepth && DoNull && !InCheck && pos->ply && (pos->bigPce[pos->side] > 0) && positionEval >= beta) {
-		MakeNullMove(pos);
-		Score = -AlphaBeta( -beta, -beta + 1, depth - 1 - R, pos, info, 0, 0, table);
-		TakeNullMove(pos);
-		if(info->stopped == 1) {
-			return beta;
-		}
+    // Null Move Pruning
+    if(depth >= minDepth && DoNull && !InCheck && pos->ply && (pos->bigPce[pos->side] > 0) && positionEval >= beta) {
+        int R = 2 + (32 * depth + MIN(positionEval - beta, 384)) / 128;
+        
+        MakeNullMove(pos);
+        Score = -AlphaBeta(-beta, -beta + 1, depth - 1 - R, pos, info, 0, 0, table);
+        TakeNullMove(pos);
+        
+        if(info->stopped == 1) {
+            return beta;
+        }
 
-		if (Score >= beta && abs(Score) < ISMATE) {
-			pthread_mutex_lock(&info->mutex);
-			info->nullCut++;
-			pthread_mutex_unlock(&info->mutex);
-			return beta;
-		}
-	}
+        if (Score >= beta) {
+            if (depth >= 10) {
+                int verifyScore = AlphaBeta(alpha, beta, depth - 1 - R, pos, info, 0, 0, table);
+                if (verifyScore >= beta) {
+                    return verifyScore;
+                }
+            } else {
+                pthread_mutex_lock(&info->mutex);
+                info->nullCut++;
+                pthread_mutex_unlock(&info->mutex);
+                return beta;
+            }
+        }
+    }
 
-	S_MOVELIST list[1];
+    S_MOVELIST list[1];
   	GenerateAllMoves(pos,list);
 
   	int MoveNum = 0;
@@ -497,9 +504,6 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 
 				// do not fall directly into quiescence search
 				reduce = MIN(depth - 1, MAX(reduce, 1));
-
-				// print reduction depth at move number
-				// printf("reduction: %d depth: %d moveNum: %d\n", (reduce - 1), depth, Legal);
 
 				// search with the reduced depth
 				Score = -AlphaBeta( -alpha - 1, -alpha, depth - reduce, pos, info, 1, 0, table);

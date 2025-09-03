@@ -419,22 +419,17 @@ void readFENScores(char (*fenBuf)[MAX_FEN_LEN], double *scores, FILE* inputFile,
 	}
 }
 
-static double getError(S_BOARD *pos, S_EVAL_PARAMS *params, double K, char (*fenBuf)[MAX_FEN_LEN], double *scores, int numPos, int posOffset, int isTanh) {
+static double getError(S_BOARD *pos, S_EVAL_PARAMS *params, double K, S_BOARD *boards, double *scores, int numPos, int posOffset, int isTanh) {
 	double total_error = 0.0;
 	
-	// Create a copy of the board for each thread to avoid race conditions
+	// Use pre-parsed boards instead of parsing FEN each time
 	#pragma omp parallel reduction(+:total_error)
 	{
-		S_BOARD thread_pos[1];
-		memset(thread_pos, 0, sizeof(S_BOARD));
-		
 		#pragma omp for schedule(dynamic)
 		for (int i = posOffset; i < numPos + posOffset; i++) {
 			double result = scores[i];
-			// read FEN + score in thread-local position
-			ParseFen(fenBuf[i], thread_pos);
-			// evaluate the position
-			int score = EvalPositionTunable(thread_pos, params);
+			// evaluate the position using pre-parsed board
+			int score = EvalPositionTunable(&boards[i], params);
 			double sigmoid = 1 / (1 + pow(10, ((-K * score) / 400)));
 			// this is incorrect for the stockfish augmented dataset so commented out
 			double tanhResult = 2 * result - 1;
@@ -447,6 +442,126 @@ static double getError(S_BOARD *pos, S_EVAL_PARAMS *params, double K, char (*fen
 		}
 	}
 	return total_error / numPos;
+}
+
+// Pre-allocated batch indices for memory efficiency
+static int *sa_batch_indices = NULL;
+static int *ls_batch_indices = NULL;
+
+// Initialize batch indices for memory efficiency
+void initBatchIndices(int sa_size, int ls_size, int numPos, int posOffset) {
+	// Free previous allocations if they exist
+	if (sa_batch_indices != NULL) {
+		free(sa_batch_indices);
+		sa_batch_indices = NULL;
+	}
+	if (ls_batch_indices != NULL) {
+		free(ls_batch_indices);
+		ls_batch_indices = NULL;
+	}
+	
+	// Allocate and initialize SA batch indices
+	sa_batch_indices = (int *)malloc(sa_size * sizeof(int));
+	if (sa_batch_indices == NULL) {
+		printf("Error: Failed to allocate memory for SA batch indices\n");
+		return;
+	}
+	
+	// Allocate and initialize LS batch indices
+	ls_batch_indices = (int *)malloc(ls_size * sizeof(int));
+	if (ls_batch_indices == NULL) {
+		printf("Error: Failed to allocate memory for LS batch indices\n");
+		free(sa_batch_indices);
+		sa_batch_indices = NULL;
+		return;
+	}
+	
+	// Initialize with random indices
+	for (int i = 0; i < sa_size; i++) {
+		sa_batch_indices[i] = posOffset + (rand() % numPos);
+	}
+	
+	for (int i = 0; i < ls_size; i++) {
+		ls_batch_indices[i] = posOffset + (rand() % numPos);
+	}
+}
+
+// Free batch indices memory
+void freeBatchIndices() {
+	if (sa_batch_indices != NULL) {
+		free(sa_batch_indices);
+		sa_batch_indices = NULL;
+	}
+	if (ls_batch_indices != NULL) {
+		free(ls_batch_indices);
+		ls_batch_indices = NULL;
+	}
+}
+
+// Refresh batch indices with new random values
+void refreshBatchIndices(int batch_type, int batch_size, int numPos, int posOffset) {
+	int *indices = (batch_type == 0) ? sa_batch_indices : ls_batch_indices;
+	
+	if (indices == NULL) {
+		printf("Error: Batch indices not initialized\n");
+		return;
+	}
+	
+	for (int i = 0; i < batch_size; i++) {
+		indices[i] = posOffset + (rand() % numPos);
+	}
+}
+
+// Mini-batch version of getError that uses a random subset of positions
+static double getErrorMiniBatch(S_BOARD *pos, S_EVAL_PARAMS *params, double K, S_BOARD *boards, double *scores, 
+							int numPos, int posOffset, int isTanh, int batch_size) {
+	double total_error = 0.0;
+	
+	// Determine which batch indices to use (0 for SA, 1 for LS)
+	int batch_type = (batch_size > 50000) ? 0 : 1; // Assume larger batch is SA, smaller is LS
+	int *indices = (batch_type == 0) ? sa_batch_indices : ls_batch_indices;
+	
+	// Check if indices are initialized
+	if (indices == NULL) {
+		// Fallback to temporary allocation if not initialized
+		indices = (int *)malloc(batch_size * sizeof(int));
+		if (indices == NULL) {
+			printf("Error: Failed to allocate memory for batch indices\n");
+			return INFINITE;
+		}
+		
+		for (int i = 0; i < batch_size; i++) {
+			indices[i] = posOffset + (rand() % numPos);
+		}
+	}
+	
+	// Use pre-parsed boards instead of parsing FEN each time
+	#pragma omp parallel reduction(+:total_error)
+	{
+		#pragma omp for schedule(dynamic)
+		for (int j = 0; j < batch_size; j++) {
+			int i = indices[j];
+			double result = scores[i];
+			// evaluate the position using pre-parsed board
+			int score = EvalPositionTunable(&boards[i], params);
+			double sigmoid = 1 / (1 + pow(10, ((-K * score) / 400)));
+			// this is incorrect for the stockfish augmented dataset so commented out
+			double tanhResult = 2 * result - 1;
+			//double tanhResult = result;
+			double tanh_eval = tanh((K * score) / 400);
+			// add to error (error is based on pseudo-huber loss, to reduce the power of outliers)
+			double residual = (isTanh) ? tanhResult - tanh_eval : result - sigmoid;
+			double local_error = 0.25 * (sqrt(1 + (2 * pow(residual, 2))) - 1);
+			total_error += local_error;
+		}
+	}
+	
+	// Only free if we had to allocate temporarily
+	if (sa_batch_indices == NULL && ls_batch_indices == NULL) {
+		free(indices);
+	}
+	
+	return total_error / batch_size;
 }
 
 int getRandomNumber(int step_size) {
@@ -598,6 +713,57 @@ static void printParamsToFile(S_EVAL_PARAMS *params, FILE *file) {
 #include <omp.h>
 #endif
 
+// Parse FENs in chunks to avoid memory issues
+#define PARSE_CHUNK_SIZE 500000 // Process 500K positions at a time
+
+void parseFENsToBoards(char (*fenBuf)[MAX_FEN_LEN], S_BOARD *boards, int numPos) {
+	int chunks = (numPos + PARSE_CHUNK_SIZE - 1) / PARSE_CHUNK_SIZE; // Ceiling division
+	printf("Parsing in %d chunks to manage memory usage...\n", chunks);
+	
+	// Track progress and performance
+	time_t start_time = time(NULL);
+	int total_parsed = 0;
+	
+	for (int chunk = 0; chunk < chunks; chunk++) {
+		int start = chunk * PARSE_CHUNK_SIZE;
+		int end = MIN((chunk + 1) * PARSE_CHUNK_SIZE, numPos);
+		int chunkSize = end - start;
+		
+		printf("Parsing chunk %d/%d (%d positions, %d-%d)...\n", 
+			chunk + 1, chunks, chunkSize, start, end - 1);
+		
+		#pragma omp parallel
+		{
+			#pragma omp for schedule(dynamic)
+			for (int i = start; i < end; i++) {
+				ParseFen(fenBuf[i], &boards[i]);
+				
+				// Track progress (thread-safe)
+				#pragma omp critical
+				{
+					total_parsed++;
+					if (total_parsed % 50000 == 0) {
+							time_t current = time(NULL);
+							double elapsed = difftime(current, start_time);
+							printf("Processed %d/%d positions (%.1f%%) - %.1f pos/sec\r", 
+								total_parsed, numPos, 
+								(double)total_parsed*100/numPos,
+								(elapsed > 0) ? (total_parsed / elapsed) : 0);
+							fflush(stdout);
+					}
+				}
+			}
+		}
+		
+		// Force memory cleanup after each chunk
+		#pragma omp barrier
+		printf("\nChunk %d/%d completed.\n", chunk + 1, chunks);
+	}
+	
+	time_t end_time = time(NULL);
+	printf("Parsing complete in %.1f seconds.\n", difftime(end_time, start_time));
+}
+
 void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_tanh) {
 	int adjust_val = 1;
 	double K = 1;
@@ -653,15 +819,39 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 	readFENScores(fens_buf, scores_buf, input, numPos);
 	fclose(input);
 
+	// Allocate memory for boards - check if allocation is successful
+	printf("Allocating memory for %d positions...\n", numPos);
+	S_BOARD *boards = (S_BOARD *)malloc(numPos * sizeof(S_BOARD));
+	if (boards == NULL) {
+		printf("Error: Failed to allocate memory for boards. Try using a smaller dataset.\n");
+		free(fens_buf);
+		free(scores_buf);
+		return;
+	}
+
+	// Parse FENs in chunks to manage memory usage
+	parseFENsToBoards(fens_buf, boards, numPos);
+	printf("Parsing complete.\n");
+
 	// get index of training set and validation set (90 - 10 split)
 	int numPosTrain = 0.9 * numPos;
 	int numPosVal = numPos - numPosTrain;
 	int valOffset = numPosTrain;
 
-	double last_error = INFINITE;
-	double best_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+	// Calculate mini-batch sizes
+	int sa_batch_size = MIN(100000, numPosTrain / 100);
+	int ls_batch_size = 50000;
+	printf("Using mini-batch sizes: SA=%d, LS=%d\n", sa_batch_size, ls_batch_size);
+	
+	// Initialize batch indices for memory efficiency
+	printf("Initializing batch indices...\n");
+	initBatchIndices(sa_batch_size, ls_batch_size, numPosTrain, 0);
 
-	// first tune the K via local search
+	double last_error = INFINITE;
+	// Use full dataset for initial error calculation
+	double best_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+
+	// first tune the K via local search with mini-batch
 	printf("Optimizing K before tuning: \n");
 	double K_adj_val = 0.1;
 	while (best_error < last_error) {
@@ -669,17 +859,27 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 		printf("Local Search - K: %0.03lf\r", K);
 		K += K_adj_val;
 		listToParams(params_list, params);
-		double new_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+		// Use mini-batch for K optimization
+		double new_error = getErrorMiniBatch(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh, ls_batch_size);
 		if (new_error < best_error) {
-			best_error = new_error;
-			continue;
+			// Verify with full dataset if mini-batch shows improvement
+			new_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+			if (new_error < best_error) {
+				best_error = new_error;
+				continue;
+			}
 		}
 		K -= 2 * K_adj_val;
 		listToParams(params_list, params);
-		new_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+		// Use mini-batch for K optimization
+		new_error = getErrorMiniBatch(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh, ls_batch_size);
 		if (new_error < best_error) {
-			best_error = new_error;
-			continue;
+			// Verify with full dataset if mini-batch shows improvement
+			new_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+			if (new_error < best_error) {
+				best_error = new_error;
+				continue;
+			}
 		}
 		K += K_adj_val; // reset if failed
 	}
@@ -690,21 +890,30 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 
 	// then tune with simulated annealing (for exploration) and local search (for exploitation)
 	int epoch = 0;
-	double init_temp = 100;
+	double init_temp = 1e-3; // başlangıç, hata ölçeğine yakın (hata ~0.022)
+	double cooling_rate = 0.9995; // çok yavaş soğuma
+	double temperature = init_temp; // her epoch başında reheat veya kullan
+	int reheat_interval = 5; // her 5 epoch'ta bir reheat
 	do {
 		epoch++;
 		last_error = best_error;
 		printf("Epoch %d: \n", epoch);
 
-		if (epoch < 10) {
-			// first do simulated annealing for first 10 iterations
-			// explorative part of the algorithm, so annealing parameters are tuned for high exploration
-			int sim_iters = 5000;
-			double temperature = init_temp / epoch;
-			double cooling_rate = 0.95;
+		// Her reheat_interval epoch'ta temperature'ı yeniden başlat
+		if (epoch % reheat_interval == 0) {
+			temperature = init_temp; // reheat
+			printf(" - Reheating temperature to %0.06lf\n", temperature);
+		}
+
+		// Her epoch'ta simulated annealing çalıştır
+		// explorative part of the algorithm, so annealing parameters are tuned for high exploration
+			int sim_iters = 2000; // mini-batch kullandığımız için azaltıldı
 			double tune_probability = 0.05;
 			int tune_size = 2;
-			printf(" - Simulated Annealing\n");
+			printf(" - Simulated Annealing (mini-batch size: %d)\n", sa_batch_size);
+			
+			// Refresh SA batch indices for this epoch
+			refreshBatchIndices(0, sa_batch_size, numPosTrain, 0);
 			for (int i = 0; i < sim_iters; i++) {
 				for (int i = 0; i < params_length; i++) {
 					double random_number = rand() / (double)RAND_MAX;
@@ -714,16 +923,26 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 						new_params_list[i] = params_list[i];
 				}
 				listToParams(new_params_list, params);
-				double new_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+				// Use mini-batch for SA
+				double new_error = getErrorMiniBatch(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh, sa_batch_size);
 				double random_number = rand() / (double)RAND_MAX;
 				if (new_error < best_error || random_number < exp((best_error - new_error) / temperature)) {
-					best_error = new_error;
-					memcpy(params_list, new_params_list, sizeof(S_EVAL_PARAMS));
+					// If mini-batch shows improvement, verify with full dataset
+					if (new_error < best_error) {
+						double full_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+						if (full_error < best_error) {
+							best_error = full_error;
+							memcpy(params_list, new_params_list, sizeof(S_EVAL_PARAMS));
+						}
+					} else {
+						// For exploration (random acceptance), use mini-batch error
+						best_error = new_error;
+						memcpy(params_list, new_params_list, sizeof(S_EVAL_PARAMS));
+					}
 				}
-				temperature *= cooling_rate;
-				printf(" --- Iteration %3d - Temp %3.03lf - Error: %0.06lf\r", i + 1, temperature, best_error);
+				temperature *= cooling_rate; // Çok yavaş soğuma (0.9995)
+				printf(" --- Iteration %3d - Temp %0.06lf - Error: %0.06lf\r", i + 1, temperature, best_error);
 			}
-		}
 		
 		printf("\n");
 		//printParams(params);
@@ -732,47 +951,80 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 		// exploitative part of the algorithm
 		int steps_in_a_row = 0;
 		int max_in_a_row = MIN((epoch / 2), 10); // slowly increase exploitaion as algorithm goes on
-		printf(" - Shuffled Local Search\n");
+		printf(" - Shuffled Local Search (mini-batch size: %d)\n", ls_batch_size);
+		
+		// Refresh LS batch indices for this epoch
+		refreshBatchIndices(1, ls_batch_size, numPosTrain, 0);
+		
 		int *shuffled_indices = (int *)malloc(params_length * sizeof(int));
 		shuffleIndices(shuffled_indices, params_length);
 		for (int i = 0; i < params_length; i++) {
 			printf(" --- Parameter %3d/%d ---------- Error: %0.06lf\r", i + 1, params_length, best_error);
 			params_list[shuffled_indices[i]] += adjust_val;
 			listToParams(params_list, params);
-			double new_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+			// Use mini-batch for local search
+			double new_error = getErrorMiniBatch(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh, ls_batch_size);
 			if (new_error < best_error) {
-				best_error = new_error;
-				i--;
+				// If mini-batch shows improvement, verify with full dataset when we have consecutive improvements
 				steps_in_a_row++;
 				if (steps_in_a_row >= max_in_a_row) {
-					i++;
-					steps_in_a_row = 0;
+					// Verify with full dataset after consecutive improvements
+					double full_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+					if (full_error < best_error) {
+						best_error = full_error;
+						i--;
+						steps_in_a_row = 0; // Reset counter after full evaluation
+					} else {
+						// If full dataset doesn't confirm improvement, reset parameter
+						params_list[shuffled_indices[i]] -= adjust_val;
+						listToParams(params_list, params);
+						steps_in_a_row = 0;
+					}
+				} else {
+					// Use mini-batch error for consecutive improvements tracking
+					best_error = new_error;
+					i--;
 				}
 				continue;
 			}
 			params_list[shuffled_indices[i]] -= 2 * adjust_val;
 			listToParams(params_list, params);
-			new_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
+			// Use mini-batch for local search
+			new_error = getErrorMiniBatch(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh, ls_batch_size);
 			if (new_error < best_error) {
-				best_error = new_error;
-				i--;
+				// If mini-batch shows improvement, verify with full dataset when we have consecutive improvements
 				steps_in_a_row++;
 				if (steps_in_a_row >= max_in_a_row) {
-					i++;
-					steps_in_a_row = 0;
+					// Verify with full dataset after consecutive improvements
+					double full_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+					if (full_error < best_error) {
+						best_error = full_error;
+						i--;
+						steps_in_a_row = 0; // Reset counter after full evaluation
+					} else {
+						// If full dataset doesn't confirm improvement, reset parameter
+						params_list[shuffled_indices[i]] += 2 * adjust_val;
+						listToParams(params_list, params);
+						steps_in_a_row = 0;
+					}
+				} else {
+					// Use mini-batch error for consecutive improvements tracking
+					best_error = new_error;
+					i--;
 				}
 				continue;
 			}
 			params_list[shuffled_indices[i]] += adjust_val; // reset if failed
+			steps_in_a_row = 0; // Reset counter when no improvement
 		}
 		printf("\n");
 		// add to log file
 		FILE* log = fopen(fileLog, "a");
 		for (int i = 0; i < 28; i++)
 			fprintf(log, "-");
-		// test final errors
-		double train_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
-		double valid_error = getError(pos, params, K, fens_buf, scores_buf, numPosVal, valOffset, useTanh);
+		// test final errors with full dataset
+		double train_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+		double valid_error = getError(pos, params, K, boards, scores_buf, numPosVal, valOffset, useTanh);
 		printf(" - Train Error: %lf\n - Valid Error: %lf\n", train_error, valid_error);
 		fprintf(log, "\n--- Epoch %d ---\n - Train Error: %lf\n - Valid Error: %lf\n", epoch, train_error, valid_error);
 		printParamsToFile(params, log);
@@ -790,13 +1042,19 @@ void TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_
 	} while (best_error < last_error);
 
 	listToParams(params_list, params);
-	double train_error = getError(pos, params, K, fens_buf, scores_buf, numPosTrain, 0, useTanh);
-	double valid_error = getError(pos, params, K, fens_buf, scores_buf, numPosVal, valOffset, useTanh);
+	double train_error = getError(pos, params, K, boards, scores_buf, numPosTrain, 0, useTanh);
+	double valid_error = getError(pos, params, K, boards, scores_buf, numPosVal, valOffset, useTanh);
 	printf("Error after tuning --- Train: %0.06lf | Valid: %0.06lf", train_error, valid_error);
 
 	printf("Tuned Parameters in %s\n", fileOut);
+	
+	// Free all allocated memory
+	freeBatchIndices(); // Free batch indices
 	free(params_list);
 	free(new_params_list);
 	free(fens_buf);
 	free(scores_buf);
+	free(boards);
+	
+	printf("\nMemory cleanup completed successfully.\n");
 }
