@@ -94,7 +94,31 @@ static void AddQuietMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
 static void AddCaptureMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
 
 	list->moves[list->count].move = move;
-	list->moves[list->count].score = MvvLvaScores[CAPTURED(move)][pos->pieces[FROMSQ(move)]] + 1000000;
+	
+	// Get captured piece and attacker
+	int captured = CAPTURED(move);
+	int attacker = pos->pieces[FROMSQ(move)];
+	
+	// Calculate MVV/LVA score
+	int mvvLvaScore = MvvLvaScores[captured][attacker];
+	
+	// Only use SEE for captures that might be bad (when attacker value >= captured value)
+	if (PieceValMG[attacker] >= PieceValMG[captured]) {
+		// Use Static Exchange Evaluation for move ordering
+		int seeScore = SEE(pos, move);
+		
+		// If SEE score is positive, prioritize it highly
+		if (seeScore > 0) {
+			list->moves[list->count].score = seeScore + 1000000;
+		} else {
+			// If SEE score is negative, use MVV/LVA but with lower priority
+			list->moves[list->count].score = mvvLvaScore;
+		}
+	} else {
+		// For obviously good captures (capturing higher value piece), just use MVV/LVA + bonus
+		list->moves[list->count].score = mvvLvaScore + 1000000;
+	}
+	
 	list->count++;
 }
 

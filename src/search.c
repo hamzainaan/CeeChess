@@ -195,6 +195,7 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
     int MoveNum = 0;
 	int Legal = 0;
 	Score = -INFINITE;
+	int seeScore = 0;
 
 	for(MoveNum = 0; MoveNum < list->count; ++MoveNum) {
 
@@ -204,6 +205,19 @@ static int Quiescence(int alpha, int beta, S_BOARD *pos, S_SEARCHINFO *info) {
 		}
 
 		PickNextMove(MoveNum, list);
+
+		// SEE pruning - skip captures that lose material
+		// Only use SEE for captures that are not obviously good (like capturing higher value pieces)
+		int captured = CAPTURED(list->moves[MoveNum].move);
+		int attacker = pos->pieces[FROMSQ(list->moves[MoveNum].move)];
+		
+		// Skip SEE if capturing a higher value piece (MVV/LVA would be positive)
+		if (PieceValMG[captured] <= PieceValMG[attacker]) {
+			seeScore = SEE(pos, list->moves[MoveNum].move);
+			if (seeScore < 0) {
+				continue;
+			}
+		}
 
         if ( !MakeMove(pos,list->moves[MoveNum].move))  {
             continue;
@@ -479,6 +493,34 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 		int isQuiet = (nonCapture && !(list->moves[MoveNum].move & 0xF00000) && !isMoveCheck);
 		if (Legal && FutileNode && isQuiet) {
 			continue;
+		}
+		
+		// SEE pruning for captures - skip bad captures in non-PV nodes
+		int isCapture = (list->moves[MoveNum].move & 0x7C000);
+		if (isCapture && !isMoveCheck && FoundPv == 0 && depth <= 3) {
+			// Only use SEE for captures that are not obviously good
+			int captured = CAPTURED(list->moves[MoveNum].move);
+			int attacker = pos->pieces[FROMSQ(list->moves[MoveNum].move)];
+			
+			// Skip SEE if capturing a higher value piece
+			if (PieceValMG[captured] <= PieceValMG[attacker]) {
+				int seeScore = SEE(pos, list->moves[MoveNum].move);
+				if (seeScore < -20 * depth) {
+					continue;
+				}
+			}
+		}
+		
+		// SEE pruning for quiet moves - skip quiet moves with negative SEE in low depths
+		// Only apply SEE to quiet moves after we've searched a few legal moves
+		if (isQuiet && depth <= 2 && Legal >= 3) {
+			// Use history heuristic to decide if SEE is needed
+			if (pos->searchHistory[pos->pieces[FROMSQ(list->moves[MoveNum].move)]][TOSQ(list->moves[MoveNum].move)] < 0) {
+				int seeScore = SEE(pos, list->moves[MoveNum].move);
+				if (seeScore < 0) {
+					continue;
+				}
+			}
 		}
 
 		// if move is legal, play it

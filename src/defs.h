@@ -216,6 +216,7 @@ extern int 			ParseFen(char *fen, S_BOARD *pos);
 extern void 		PrintBoard(const S_BOARD *pos);
 extern void 		UpdateListsMaterial(S_BOARD *pos);
 extern int 			SqAttacked(const int sq, const int side, const S_BOARD *pos);
+extern int 			SEE(const S_BOARD *pos, const int move);
 extern char 		*PrMove(const int move);
 extern char 		*PrSq(const int sq);
 extern void 		PrintMoveList(const S_MOVELIST *list);

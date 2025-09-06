@@ -6,7 +6,7 @@ VERSION ?= 1.5-dev
 
 # Allow override from command line, e.g. make TARGET_OS=windows CC=x86_64-w64-mingw32-gcc
 CC ?= gcc
-CFLAGS ?= -O3 -s -Wall -fopenmp
+CFLAGS ?= -O3 -march=native -mtune=native -s -Wall
 LDFLAGS ?= -lm -fopenmp
 
 # Set target OS: windows, linux or android (default: detect from OS)
