@@ -9,9 +9,13 @@ void HashOptionChanged(int value);
 void ClearHashOptionPressed(int value);
 void ThreadsOptionChanged(int value);
 void StyleOptionChanged(int value);
+void PonderingOptionChanged(int value);
 
 // Global variable to store play style
 PLAY_STYLE CurrentPlayStyle = STYLE_NORMAL;
+
+// Global variable to store pondering status
+int PonderingEnabled = 0;
 
 // Style names
 const char* StyleNames[STYLE_COUNT] = {
@@ -57,6 +61,15 @@ S_UCI_OPTION UciOptions[] = {
         STYLE_COUNT - 1,
         STYLE_NORMAL,
         StyleOptionChanged
+    },
+    {
+        "Ponder",
+        UCI_OPTION_CHECK,
+        0,
+        0,
+        1,
+        0,
+        PonderingOptionChanged
     }
 };
 
@@ -145,6 +158,11 @@ void PrintUciOptions() {
                            StyleNames[STYLE_SOLID]);
                 }
                 break;
+            case UCI_OPTION_CHECK:
+                printf("option name %s type check default %s\n",
+                       UciOptions[i].name,
+                       UciOptions[i].default_value ? "true" : "false");
+                break;
             // Add cases for other option types
             default:
                 break;
@@ -201,4 +219,14 @@ const char* GetStyleName(PLAY_STYLE style) {
         return StyleNames[style];
     }
     return "Unknown";
+}
+
+// Get pondering status
+int GetPonderingEnabled() {
+    return PonderingEnabled;
+}
+
+// Pondering option changed handler
+void PonderingOptionChanged(int value) {
+    PonderingEnabled = value;
 }

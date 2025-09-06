@@ -58,4 +58,7 @@ PLAY_STYLE GetPlayStyle();
 // Get style name as string
 const char* GetStyleName(PLAY_STYLE style);
 
+// Get pondering status
+int GetPonderingEnabled();
+
 #endif // UCI_OPTIONS_H

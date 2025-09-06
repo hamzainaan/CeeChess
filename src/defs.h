@@ -138,6 +138,8 @@ typedef struct {
     pthread_t threadHandle;
     pthread_mutex_t mutex;
     int searching;
+    int pondering; // 1 if engine is pondering, 0 otherwise
+    int ponderMove;
 } S_SEARCHINFO;
 
 #define FROMSQ(m) ((m) & 0x7F)

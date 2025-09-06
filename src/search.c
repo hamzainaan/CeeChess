@@ -625,6 +625,8 @@ void InitThreadInfo(S_SEARCHINFO *info, int threadNum, int depth, int timeset, i
     info->singularExt = 0;
     info->threadCount = GetThreadCount();
     info->searching = 0;
+    info->pondering = 0;
+    info->ponderMove = 0;
     
     // Initialize mutex for this thread
     pthread_mutex_init(&info->mutex, NULL);
@@ -669,6 +671,11 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             pthread_create(&ThreadInfo[i]->threadHandle, NULL, ThreadStart, ThreadInfo[i]);
         }
     }
+    
+    // Mark main thread as searching
+    pthread_mutex_lock(&info->mutex);
+    info->searching = 1;
+    pthread_mutex_unlock(&info->mutex);
     
     // Main thread search loop
     for(currentDepth = 1; currentDepth <= info->depth; ++currentDepth) {
@@ -725,6 +732,13 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         
         if(stopped) {
             break;
+        }
+        
+        // If we're pondering and got a ponderhit, continue searching but not in pondering mode
+        if (!info->pondering && currentDepth == 1) {
+            pthread_mutex_lock(&info->mutex);
+            info->searching = 1;
+            pthread_mutex_unlock(&info->mutex);
         }
 
         pvMoves = GetPvLine(currentDepth, pos, table);
@@ -801,5 +815,22 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         }
     }
     
-    printf("bestmove %s\n", PrMove(bestMove));
+    // Mark main thread as no longer searching
+    pthread_mutex_lock(&info->mutex);
+    info->searching = 0;
+    pthread_mutex_unlock(&info->mutex);
+    
+    // If we were pondering, don't output a bestmove
+    if (!info->pondering) {
+        printf("bestmove %s", PrMove(bestMove));
+        
+        // If pondering is enabled, suggest a ponder move
+        if (GetPonderingEnabled() && pvMoves > 1) {
+            printf(" ponder %s", PrMove(pos->PvArray[1]));
+        }
+        printf("\n");
+    } else {
+        // We were pondering and got stopped, don't output anything
+        info->pondering = 0;
+    }
 }

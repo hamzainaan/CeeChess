@@ -11,9 +11,15 @@ void ParseGo(char* line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table) {
 	int depth = -1, movestogo = 30, movetime = -1, time = -1, opptime = -1, inc = 0;
     char *ptr = NULL;
 	info->timeset = 0;
+	info->pondering = 0; // Reset pondering flag
 
 	if ((ptr = strstr(line,"infinite"))) {
 		depth = MAXDEPTH;
+	}
+	
+	// Check if this is a ponder search
+	if ((ptr = strstr(line,"ponder"))) {
+		info->pondering = GetPonderingEnabled();
 	}
 
 	if ((ptr = strstr(line,"binc")) && pos->side == BLACK) {
@@ -193,16 +199,52 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             printf("readyok\n");
             continue;
         } else if (!strncmp(line, "position", 8)) {
+            // If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
             ParsePosition(line, pos);
         } else if (!strncmp(line, "ucinewgame", 10)) {
 			ClearHashTable(table);
             ParsePosition("position startpos\n", pos);
         } else if (!strncmp(line, "go", 2)) {
+            // If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
             ParseGo(line, info, pos, table);
         } else if (!strncmp(line, "run", 3)) {
             ParseFen(START_FEN, pos);
             ParseGo("go infinite", info, pos, table);
         } else if (!strncmp(line, "quit", 4)) {
+            // If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
             info->quit = 1;
             break;
         } else if (!strncmp(line, "uci", 3)) {
@@ -211,11 +253,36 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             PrintUciOptions();
             printf("uciok\n");
         } else if (!strncmp(line, "debug", 5)) {
+            // If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
             DebugAnalysisTest(pos, info, table);
             break;
         } else if (!strncmp(line, "board", 5)) {
             PrintBoard(pos);
         } else if (!strncmp(line, "tune", 4)) {
+            // If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
+            
             // Parse tune command
             char *ptr = line + 5; // Skip "tune "
             int tune_option = atoi(ptr);
@@ -241,8 +308,28 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             }
             
             printf("Tuning process completed\n");
+        } else if (!strncmp(line, "ponderhit", 9)) {
+            // Ponderhit command - our ponder was successful
+            if (info->pondering) {
+                // Convert from pondering to normal search
+                info->pondering = 0;
+                printf("info string Ponderhit received\n");
+            }
         } else if (!strncmp(line, "setoption name ", 15)) {
-			char option_name[64] = "";
+			// If we're pondering, stop the search
+            if (info->pondering) {
+                info->stopped = 1;
+                // Wait for search to stop
+                while (info->searching) {
+                    // Small sleep to avoid busy waiting
+                    struct timespec ts;
+                    ts.tv_sec = 0;
+                    ts.tv_nsec = 1000000; // 1ms
+                    nanosleep(&ts, NULL);
+                }
+            }
+            
+            char option_name[64] = "";
 			char option_value[64] = "";
 			char *name_start = line + 15;
 			char *value_start = strstr(name_start, " value ");
