@@ -24,7 +24,7 @@ int LMRTable[64][64];
 
 // Aspiration Window Values
 static const int AspirationDepth = 4;
-static const int AspirationDelta = 25;
+static const int AspirationDelta = 50;
 
 // Probcut Values
 static const int ProbcutDepth = 4;
@@ -786,6 +786,17 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         pvMoves = GetPvLine(currentDepth, pos, table);
         bestMove = pos->PvArray[0];
 
+        // Check if we found a mate
+        if (abs(bestScore) >= ISMATE) {
+            // If we found a mate and we're not in infinite mode, stop searching and return the best move immediately
+            if (info->depth != MAXDEPTH) {
+                pthread_mutex_lock(&info->mutex);
+                info->stopped = 1;
+                pthread_mutex_unlock(&info->mutex);
+                break;
+            }
+        }
+
         int time = GetTimeMs() - info->starttime;
         
         // Calculate total nodes across all threads
@@ -831,6 +842,7 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
         // Wait for all threads to finish
         for (int i = 1; i < threadCount; i++) {
             if (ThreadInfo[i] != NULL) {
+                // Set stopped flag for all threads
                 pthread_mutex_lock(&ThreadInfo[i]->mutex);
                 ThreadInfo[i]->stopped = 1;
                 pthread_mutex_unlock(&ThreadInfo[i]->mutex);
