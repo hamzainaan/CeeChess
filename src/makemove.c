@@ -1,6 +1,7 @@
 #include "defs.h"
 #include "stdio.h"
 #include "config.h"
+#include "uci_options.h"
 
 #define HASH_PCE(pce,sq) (pos->posKey ^= (PieceKeys[(pce)][(sq)]))
 #define HASH_CA (pos->posKey ^= (CastleKeys[(pos->castlePerm)]))
@@ -124,20 +125,50 @@ int MakeMove(S_BOARD *pos, int move) {
             ClearPiece(to+10,pos);
         }
     } else if (move & 0x1000000) {
-        switch(to) {
-            case C1:
-                MovePiece(A1, D1, pos);
-			break;
-            case C8:
-                MovePiece(A8, D8, pos);
-			break;
-            case G1:
-                MovePiece(H1, F1, pos);
-			break;
-            case G8:
-                MovePiece(H8, F8, pos);
-			break;
-            default: break;
+        // Castling move
+        if (GetChessVariant() == VARIANT_CHESS960) {
+            // Chess960 castling
+            int rookFrom = -1, rookTo = -1;
+            
+            if (side == WHITE) {
+                if (to == G1) { // Kingside
+                    rookFrom = pos->rookSquares[1]; // H-side rook
+                    rookTo = F1;
+                } else if (to == C1) { // Queenside
+                    rookFrom = pos->rookSquares[0]; // A-side rook
+                    rookTo = D1;
+                }
+            } else { // BLACK
+                if (to == G8) { // Kingside
+                    rookFrom = pos->rookSquares[3]; // H-side rook
+                    rookTo = F8;
+                } else if (to == C8) { // Queenside
+                    rookFrom = pos->rookSquares[2]; // A-side rook
+                    rookTo = D8;
+                }
+            }
+            
+            // Only move the rook if valid positions were set
+            if (rookFrom != -1 && rookTo != -1) {
+                MovePiece(rookFrom, rookTo, pos);
+            }
+        } else {
+            // Standard chess castling
+            switch(to) {
+                case C1:
+                    MovePiece(A1, D1, pos);
+                    break;
+                case C8:
+                    MovePiece(A8, D8, pos);
+                    break;
+                case G1:
+                    MovePiece(H1, F1, pos);
+                    break;
+                case G8:
+                    MovePiece(H8, F8, pos);
+                    break;
+                default: break;
+            }
         }
     }
 
@@ -230,12 +261,42 @@ void TakeMove(S_BOARD *pos) {
             AddPiece(to+10, pos, WHITE_PAWN);
         }
     } else if(0x1000000 & move) {
-        switch(to) {
-            case C1: MovePiece(D1, A1, pos); break;
-            case C8: MovePiece(D8, A8, pos); break;
-            case G1: MovePiece(F1, H1, pos); break;
-            case G8: MovePiece(F8, H8, pos); break;
-            default: break;
+        // Castling move
+        if (GetChessVariant() == VARIANT_CHESS960) {
+            // Chess960 castling
+            int rookFrom = -1, rookTo = -1;
+            
+            if (pos->side == WHITE) {
+                if (to == G1) { // Kingside
+                    rookFrom = F1;
+                    rookTo = pos->rookSquares[1]; // H-side rook
+                } else if (to == C1) { // Queenside
+                    rookFrom = D1;
+                    rookTo = pos->rookSquares[0]; // A-side rook
+                }
+            } else { // BLACK
+                if (to == G8) { // Kingside
+                    rookFrom = F8;
+                    rookTo = pos->rookSquares[3]; // H-side rook
+                } else if (to == C8) { // Queenside
+                    rookFrom = D8;
+                    rookTo = pos->rookSquares[2]; // A-side rook
+                }
+            }
+            
+            // Only move the rook if valid positions were set
+            if (rookFrom != -1 && rookTo != -1) {
+                MovePiece(rookFrom, rookTo, pos);
+            }
+        } else {
+            // Standard chess castling
+            switch(to) {
+                case C1: MovePiece(D1, A1, pos); break;
+                case C8: MovePiece(D8, A8, pos); break;
+                case G1: MovePiece(F1, H1, pos); break;
+                case G8: MovePiece(F8, H8, pos); break;
+                default: break;
+            }
         }
     }
 

@@ -319,6 +319,13 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD *pos, S_SEARCHINFO 
 
     int InCheck = SqAttacked(pos->KingSq[pos->side],pos->side^1,pos);
 
+    // Update selective depth if this is deeper than what we've seen so far
+    if (pos->ply > info->seldepth) {
+        pthread_mutex_lock(&info->mutex);
+        info->seldepth = pos->ply;
+        pthread_mutex_unlock(&info->mutex);
+    }
+
     // Check Extension (Extend all checks before dropping into Quiescence)
     if(InCheck) {
         depth++;
@@ -654,6 +661,7 @@ void *ThreadStart(void *threadArgs) {
 void InitThreadInfo(S_SEARCHINFO *info, int threadNum, int depth, int timeset, int starttime, int stoptime, int movestogo) {
     info->threadNum = threadNum;
     info->depth = depth;
+    info->seldepth = 0; // Initialize selective depth
     info->timeset = timeset;
     info->starttime = starttime;
     info->stoptime = stoptime;
@@ -818,11 +826,16 @@ void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table) {
             nps = ((U64)totalNodes * 1000ULL) / (U64)time;
         }
         
+        // Get hashfull value
+        int hashfull = GetHashfull(table);
+        
         if(abs(bestScore) > ISMATE) {
             bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-            printf("info score mate %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, totalNodes, nps, time);
+            printf("info score mate %d depth %d seldepth %d nodes %ld nps %lld hashfull %d time %d ", 
+                   bestScore, currentDepth, info->seldepth, totalNodes, nps, hashfull, time);
         } else {
-            printf("info score cp %d depth %d nodes %ld nps %lld time %d ", bestScore, currentDepth, totalNodes, nps, time);
+            printf("info score cp %d depth %d seldepth %d nodes %ld nps %lld hashfull %d time %d ", 
+                   bestScore, currentDepth, info->seldepth, totalNodes, nps, hashfull, time);
         }
 
         printf("pv");

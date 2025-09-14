@@ -139,7 +139,11 @@ void ParsePosition(char* lineIn, S_BOARD *pos) {
     char *ptrChar = lineIn;
 
     if(strncmp(lineIn, "startpos", 8) == 0){
-        ParseFen(START_FEN, pos);
+        if (GetChessVariant() == VARIANT_CHESS960) {
+            printf("Please disable UCI_Chess960 option and try again.");
+        } else {
+            ParseFen(START_FEN, pos);
+        }
     } else {
         ptrChar = strstr(lineIn, "fen");
         if(ptrChar == NULL) {

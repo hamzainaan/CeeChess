@@ -17,12 +17,24 @@ PLAY_STYLE CurrentPlayStyle = STYLE_NORMAL;
 // Global variable to store pondering status
 int PonderingEnabled = 0;
 
+// Global variable to store chess variant
+CHESS_VARIANT CurrentChessVariant = VARIANT_STANDARD;
+
 // Style names
 const char* StyleNames[STYLE_COUNT] = {
     "Normal",
     "Aggressive",
     "Solid"
 };
+
+// Variant names
+const char* VariantNames[VARIANT_COUNT] = {
+    "Standard",
+    "Chess960"
+};
+
+// Forward declaration for Chess960 option handler
+void Chess960OptionChanged(int value);
 
 // UCI options array
 S_UCI_OPTION UciOptions[] = {
@@ -70,6 +82,15 @@ S_UCI_OPTION UciOptions[] = {
         1,
         0,
         PonderingOptionChanged
+    },
+    {
+        "UCI_Chess960",
+        UCI_OPTION_CHECK,
+        0,
+        0,
+        1,
+        0,
+        Chess960OptionChanged
     }
 };
 
@@ -229,4 +250,22 @@ int GetPonderingEnabled() {
 // Pondering option changed handler
 void PonderingOptionChanged(int value) {
     PonderingEnabled = value;
+}
+
+// Get chess variant
+CHESS_VARIANT GetChessVariant() {
+    return CurrentChessVariant;
+}
+
+// Get variant name as string
+const char* GetVariantName(CHESS_VARIANT variant) {
+    if (variant >= 0 && variant < VARIANT_COUNT) {
+        return VariantNames[variant];
+    }
+    return "Unknown";
+}
+
+// Chess960 option changed handler
+void Chess960OptionChanged(int value) {
+    CurrentChessVariant = value ? VARIANT_CHESS960 : VARIANT_STANDARD;
 }

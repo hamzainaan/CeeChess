@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "defs.h"
+#include "uci_options.h"
 
 void UpdateListsMaterial(S_BOARD *pos) {
     int piece, sq, index, colour;
@@ -93,6 +94,49 @@ int ParseFen(char *fen, S_BOARD *pos) {
     pos->side = (*fen == 'w') ? WHITE : BLACK;
     fen += 2;
 
+    // Store initial rook positions for Chess960
+    int wRookAPos = -1;
+    int wRookHPos = -1;
+    int bRookAPos = -1;
+    int bRookHPos = -1;
+    
+    // Find rook positions for Chess960
+    if (GetChessVariant() == VARIANT_CHESS960) {
+        // Find white rooks
+        for (i = A1; i <= H1; i++) {
+            if (pos->pieces[i] == WHITE_ROOK) {
+                if (wRookAPos == -1) {
+                    wRookAPos = i;
+                } else {
+                    wRookHPos = i;
+                }
+            }
+        }
+        
+        // Find black rooks
+        for (i = A8; i <= H8; i++) {
+            if (pos->pieces[i] == BLACK_ROOK) {
+                if (bRookAPos == -1) {
+                    bRookAPos = i;
+                } else {
+                    bRookHPos = i;
+                }
+            }
+        }
+        
+        // Store rook positions for castling
+        pos->rookSquares[0] = wRookAPos;
+        pos->rookSquares[1] = wRookHPos;
+        pos->rookSquares[2] = bRookAPos;
+        pos->rookSquares[3] = bRookHPos;
+    } else {
+        // Standard chess rook positions
+        pos->rookSquares[0] = A1;
+        pos->rookSquares[1] = H1;
+        pos->rookSquares[2] = A8;
+        pos->rookSquares[3] = H8;
+    }
+
     for (i = 0; i < 4; i++) {
         if (*fen == ' ') {
             break;
@@ -102,7 +146,30 @@ int ParseFen(char *fen, S_BOARD *pos) {
             case 'Q': pos->castlePerm |= WQCA; break;
             case 'k': pos->castlePerm |= BKCA; break;
             case 'q': pos->castlePerm |= BQCA; break;
-            default: break;
+            default:
+                // Chess960 castling notation (file-based)
+                if (GetChessVariant() == VARIANT_CHESS960) {
+                    if (*fen >= 'A' && *fen <= 'H') {
+                        // White castling with specified rook
+                        int rookFile = *fen - 'A';
+                        int rookSq = FR2SQ(rookFile, RANK_1);
+                        if (rookSq == wRookHPos) {
+                            pos->castlePerm |= WKCA;
+                        } else if (rookSq == wRookAPos) {
+                            pos->castlePerm |= WQCA;
+                        }
+                    } else if (*fen >= 'a' && *fen <= 'h') {
+                        // Black castling with specified rook
+                        int rookFile = *fen - 'a';
+                        int rookSq = FR2SQ(rookFile, RANK_8);
+                        if (rookSq == bRookHPos) {
+                            pos->castlePerm |= BKCA;
+                        } else if (rookSq == bRookAPos) {
+                            pos->castlePerm |= BQCA;
+                        }
+                    }
+                }
+                break;
         }
         fen++;
     }

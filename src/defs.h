@@ -118,12 +118,14 @@ typedef struct {
 	int PvArray[MAXDEPTH];
 	int searchHistory[13][120];
 	int searchKillers[2][MAXDEPTH];
+	int rookSquares[4]; //For Chess960
 } S_BOARD;
 
 typedef struct {
     int starttime;
     int stoptime;
     int depth;
+    int seldepth;
     int timeset;
     int movestogo;
     long nodes;
@@ -242,7 +244,8 @@ extern int 			ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *s
 extern int 			ProbePvMove(const S_BOARD *pos, S_HASHTABLE *table);
 extern int 			GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table);
 extern void 		ClearHashTable(S_HASHTABLE *table);
-extern int 			EvalPosition(S_BOARD *pos);
+extern int 		    GetHashfull(S_HASHTABLE *table);
+extern int 		    EvalPosition(S_BOARD *pos);
 extern void 		InitEval();
 extern void 		Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table);
 extern void 		TuneEval(S_BOARD *pos, char *fileIn, char *fileOut, char *fileLog, int use_tanh);

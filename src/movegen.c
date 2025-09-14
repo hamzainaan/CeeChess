@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "defs.h"
 #include "config.h"
+#include "uci_options.h"
 
 #define MOVE(f,t,ca,pro,fl) ( (f) | ((t) << 7) | ( (ca) << 14 ) | ( (pro) << 20 ) | (fl))
 #define SQOFFBOARD(sq) (FilesBrd[(sq)]==OFFBOARD)
@@ -229,17 +230,69 @@ void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list) {
 		}
 
 		if(pos->castlePerm & WKCA) {
-			if(pos->pieces[F1] == EMPTY && pos->pieces[G1] == EMPTY) {
-				if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(F1,BLACK,pos) ) {
-					AddQuietMove(pos, MOVE(E1, G1, EMPTY, EMPTY, 0x1000000), list);
+			if (GetChessVariant() == VARIANT_CHESS960) {
+				// Chess960 kingside castling
+				int kingPos = pos->KingSq[WHITE];
+				int rookPos = pos->rookSquares[1]; // H-side rook
+				int kingFile = FilesBrd[kingPos];
+				int rookFile = FilesBrd[rookPos];
+				
+				// Check if squares between king and rook are empty
+				int squaresEmpty = 1;
+				for (int file = MIN(kingFile, rookFile) + 1; file < MAX(kingFile, rookFile); file++) {
+					if (pos->pieces[FR2SQ(file, RANK_1)] != EMPTY) {
+						squaresEmpty = 0;
+						break;
+					}
+				}
+				
+				// Check if F1 and G1 are empty (king's destination and rook's destination)
+				if (pos->pieces[F1] == EMPTY && pos->pieces[G1] == EMPTY && squaresEmpty) {
+					// Check if king's path is not under attack
+					if (!SqAttacked(kingPos, BLACK, pos) && !SqAttacked(F1, BLACK, pos)) {
+						AddQuietMove(pos, MOVE(kingPos, G1, EMPTY, EMPTY, 0x1000000), list);
+					}
+				}
+			} else {
+				// Standard chess castling
+				if(pos->pieces[F1] == EMPTY && pos->pieces[G1] == EMPTY) {
+					if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(F1,BLACK,pos) ) {
+						AddQuietMove(pos, MOVE(E1, G1, EMPTY, EMPTY, 0x1000000), list);
+					}
 				}
 			}
 		}
 
 		if(pos->castlePerm & WQCA) {
-			if(pos->pieces[D1] == EMPTY && pos->pieces[C1] == EMPTY && pos->pieces[B1] == EMPTY) {
-				if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(D1,BLACK,pos) ) {
-					AddQuietMove(pos, MOVE(E1, C1, EMPTY, EMPTY, 0x1000000), list);
+			if (GetChessVariant() == VARIANT_CHESS960) {
+				// Chess960 queenside castling
+				int kingPos = pos->KingSq[WHITE];
+				int rookPos = pos->rookSquares[0]; // A-side rook
+				int kingFile = FilesBrd[kingPos];
+				int rookFile = FilesBrd[rookPos];
+				
+				// Check if squares between king and rook are empty
+				int squaresEmpty = 1;
+				for (int file = MIN(kingFile, rookFile) + 1; file < MAX(kingFile, rookFile); file++) {
+					if (pos->pieces[FR2SQ(file, RANK_1)] != EMPTY) {
+						squaresEmpty = 0;
+						break;
+					}
+				}
+				
+				// Check if C1 and D1 are empty (king's destination and rook's destination)
+				if (pos->pieces[C1] == EMPTY && pos->pieces[D1] == EMPTY && squaresEmpty) {
+					// Check if king's path is not under attack
+					if (!SqAttacked(kingPos, BLACK, pos) && !SqAttacked(D1, BLACK, pos)) {
+						AddQuietMove(pos, MOVE(kingPos, C1, EMPTY, EMPTY, 0x1000000), list);
+					}
+				}
+			} else {
+				// Standard chess castling
+				if(pos->pieces[D1] == EMPTY && pos->pieces[C1] == EMPTY && pos->pieces[B1] == EMPTY) {
+					if(!SqAttacked(E1,BLACK,pos) && !SqAttacked(D1,BLACK,pos) ) {
+						AddQuietMove(pos, MOVE(E1, C1, EMPTY, EMPTY, 0x1000000), list);
+					}
 				}
 			}
 		}
@@ -275,17 +328,69 @@ void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list) {
 
 		// castling
 		if(pos->castlePerm &  BKCA) {
-			if(pos->pieces[F8] == EMPTY && pos->pieces[G8] == EMPTY) {
-				if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(F8,WHITE,pos) ) {
-					AddQuietMove(pos, MOVE(E8, G8, EMPTY, EMPTY, 0x1000000), list);
+			if (GetChessVariant() == VARIANT_CHESS960) {
+				// Chess960 kingside castling
+				int kingPos = pos->KingSq[BLACK];
+				int rookPos = pos->rookSquares[3]; // H-side rook
+				int kingFile = FilesBrd[kingPos];
+				int rookFile = FilesBrd[rookPos];
+				
+				// Check if squares between king and rook are empty
+				int squaresEmpty = 1;
+				for (int file = MIN(kingFile, rookFile) + 1; file < MAX(kingFile, rookFile); file++) {
+					if (pos->pieces[FR2SQ(file, RANK_8)] != EMPTY) {
+						squaresEmpty = 0;
+						break;
+					}
+				}
+				
+				// Check if F8 and G8 are empty (king's destination and rook's destination)
+				if (pos->pieces[F8] == EMPTY && pos->pieces[G8] == EMPTY && squaresEmpty) {
+					// Check if king's path is not under attack
+					if (!SqAttacked(kingPos, WHITE, pos) && !SqAttacked(F8, WHITE, pos)) {
+						AddQuietMove(pos, MOVE(kingPos, G8, EMPTY, EMPTY, 0x1000000), list);
+					}
+				}
+			} else {
+				// Standard chess castling
+				if(pos->pieces[F8] == EMPTY && pos->pieces[G8] == EMPTY) {
+					if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(F8,WHITE,pos) ) {
+						AddQuietMove(pos, MOVE(E8, G8, EMPTY, EMPTY, 0x1000000), list);
+					}
 				}
 			}
 		}
 
 		if(pos->castlePerm &  BQCA) {
-			if(pos->pieces[D8] == EMPTY && pos->pieces[C8] == EMPTY && pos->pieces[B8] == EMPTY) {
-				if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(D8,WHITE,pos) ) {
-					AddQuietMove(pos, MOVE(E8, C8, EMPTY, EMPTY, 0x1000000), list);
+			if (GetChessVariant() == VARIANT_CHESS960) {
+				// Chess960 queenside castling
+				int kingPos = pos->KingSq[BLACK];
+				int rookPos = pos->rookSquares[2]; // A-side rook
+				int kingFile = FilesBrd[kingPos];
+				int rookFile = FilesBrd[rookPos];
+				
+				// Check if squares between king and rook are empty
+				int squaresEmpty = 1;
+				for (int file = MIN(kingFile, rookFile) + 1; file < MAX(kingFile, rookFile); file++) {
+					if (pos->pieces[FR2SQ(file, RANK_8)] != EMPTY) {
+						squaresEmpty = 0;
+						break;
+					}
+				}
+				
+				// Check if C8 and D8 are empty (king's destination and rook's destination)
+				if (pos->pieces[C8] == EMPTY && pos->pieces[D8] == EMPTY && squaresEmpty) {
+					// Check if king's path is not under attack
+					if (!SqAttacked(kingPos, WHITE, pos) && !SqAttacked(D8, WHITE, pos)) {
+						AddQuietMove(pos, MOVE(kingPos, C8, EMPTY, EMPTY, 0x1000000), list);
+					}
+				}
+			} else {
+				// Standard chess castling
+				if(pos->pieces[D8] == EMPTY && pos->pieces[C8] == EMPTY && pos->pieces[B8] == EMPTY) {
+					if(!SqAttacked(E8,WHITE,pos) && !SqAttacked(D8,WHITE,pos) ) {
+						AddQuietMove(pos, MOVE(E8, C8, EMPTY, EMPTY, 0x1000000), list);
+					}
 				}
 			}
 		}

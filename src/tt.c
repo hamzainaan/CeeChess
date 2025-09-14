@@ -11,6 +11,26 @@
 
 S_HASHTABLE HashTable[1];
 
+// Returns hashfull value in permille (0-1000)
+int GetHashfull(S_HASHTABLE *table) {
+    int used = 0;
+    int sample = 1000;
+    
+    // Use a sample of entries to estimate hashfull
+    if (table->numEntries < sample) {
+        sample = table->numEntries;
+    }
+    
+    for (int i = 0; i < sample; i++) {
+        if (table->pTable[i].posKey != 0) {
+            used++;
+        }
+    }
+    
+    // Return permille value (0-1000)
+    return (used * 1000) / sample;
+}
+
 int GetPvLine(const int depth, S_BOARD *pos, S_HASHTABLE *table) {
 
 	int move = ProbePvMove(pos, table);

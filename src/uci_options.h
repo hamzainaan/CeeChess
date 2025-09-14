@@ -12,6 +12,13 @@ typedef enum {
     UCI_OPTION_STRING
 } UCI_OPTION_TYPE;
 
+// Chess variant options
+typedef enum {
+    VARIANT_STANDARD,
+    VARIANT_CHESS960,
+    VARIANT_COUNT
+} CHESS_VARIANT;
+
 // Style options for time management
 typedef enum {
     STYLE_NORMAL,
@@ -60,5 +67,11 @@ const char* GetStyleName(PLAY_STYLE style);
 
 // Get pondering status
 int GetPonderingEnabled();
+
+// Get chess variant
+CHESS_VARIANT GetChessVariant();
+
+// Get variant name as string
+const char* GetVariantName(CHESS_VARIANT variant);
 
 #endif // UCI_OPTIONS_H
