@@ -3,7 +3,45 @@ Hi! I am a bot written in C, heavily inspired by the Vice engine and video serie
 
 - https://lichess.org/@/seeChessBot
 
-- https://cee-chess.fly.dev/
+## Features and Techniques
+
+### Search Techniques
+- **Alpha-Beta Pruning** - Core search algorithm with fail-soft implementation
+- **Iterative Deepening** - Progressively deeper searches with previous results
+- **Principal Variation Search** - Optimized alpha-beta for PV-nodes
+- **Quiescence Search** - Extends search in tactically volatile positions
+- **Null Move Pruning** - Skip a turn to quickly identify non-zugzwang positions
+- **Late Move Reduction (LMR)** - Reduces search depth for likely poor moves
+- **Aspiration Windows** - Narrow alpha-beta bounds for faster searching
+- **Razoring** - Early pruning of likely poor positions
+- **Futility Pruning** - Skip moves unlikely to improve position
+- **Probcut** - Probabilistic forward pruning technique
+- **Singular Extensions** - Extends search for moves that appear much better than alternatives
+- **Mate Distance Pruning** - Prunes paths that can't improve existing mate scores
+
+### Evaluation Features
+- **Piece-Square Tables** - Position-dependent piece values
+- **Material Balance** - Basic piece counting with accurate values
+- **Pawn Structure Analysis**:
+  - Isolated pawns
+  - Connected pawns
+  - Passed pawns
+  - Connected passed pawns
+- **King Safety** - Evaluates king position and nearby pawn shield
+- **Piece Mobility** - Rewards pieces with more available moves
+- **Open File Control** - Bonuses for rooks and queens on open/semi-open files
+- **King Tropism** - Rewards pieces that are close to the enemy king
+- **Bishop Pair Bonus** - Bonus for having both bishops
+- **Tapered Evaluation** - Smoothly transitions between middlegame and endgame values
+- **Material Draw Recognition** - Identifies theoretically drawn endgame positions
+
+### Engine Features
+- **UCI Protocol Support** - Compatible with UCI chess GUIs
+- **Transposition Table** - Efficiently caches previously evaluated positions
+- **Multi-threading** - Parallel search capability
+- **Pondering** - Thinks during opponent's time
+- **Time Management** - Adjustable aggression levels and Adaptive time usage based on position complexity
+- **Chess960 Support** - Supports Fischer Random Chess variant
 
 ## Build
 
